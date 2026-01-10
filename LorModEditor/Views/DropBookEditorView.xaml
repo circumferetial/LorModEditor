@@ -1,0 +1,233 @@
+<UserControl x:Class="LorModEditor.Views.DropBookEditorView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+
+             xmlns:prism="http://prismlibrary.com/"
+             xmlns:wrappers="clr-namespace:LorModEditor.Core.Wrappers;assembly=LorModEditor.Core"
+             xmlns:viewmodels="clr-namespace:LorModEditor.ViewModels"
+             xmlns:components="clr-namespace:LorModEditor.Views.Components"
+
+             mc:Ignorable="d"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             d:DataContext="{d:DesignInstance Type=viewmodels:DropBookEditorViewModel, IsDesignTimeCreatable=False}"
+
+             d:DesignHeight="700" d:DesignWidth="900">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="260" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- 工具栏 -->
+        <Border Grid.Row="0" Grid.ColumnSpan="2" Background="#F5F5F5" Padding="10,6" BorderBrush="#DDD"
+                BorderThickness="0,0,0,1">
+            <StackPanel Orientation="Horizontal">
+                <Button Content="➕ 新建书籍" Command="{Binding CreateCommand}" Padding="12,5" Margin="0,0,10,0"
+                        FontWeight="Bold" />
+                <Button Content="🗑️ 删除书籍" Command="{Binding DeleteCommand}" Padding="12,5" Background="#FFE6E6"
+                        BorderBrush="#FFCCCC" />
+            </StackPanel>
+        </Border>
+
+        <!-- 列表 -->
+        <DockPanel Grid.Row="1" Grid.Column="0">
+            <TextBox x:Name="SearchBox" DockPanel.Dock="Top" Margin="5" Padding="5" BorderBrush="#CCC"
+                     BorderThickness="1" TextChanged="SearchBox_TextChanged" />
+            <ListBox x:Name="BookList"
+                     VirtualizingStackPanel.IsVirtualizing="True"
+                     VirtualizingStackPanel.VirtualizationMode="Recycling"
+                     ItemsSource="{Binding Manager.DropBookRepo.Items}"
+                     SelectedItem="{Binding SelectedItem}"
+                     DisplayMemberPath="DisplayName"
+                     SelectionChanged="BookList_SelectionChanged"
+                     BorderThickness="0,0,1,0" BorderBrush="#DDD" />
+        </DockPanel>
+
+        <!-- 编辑区 -->
+        <ScrollViewer Grid.Row="1" Grid.Column="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel x:Name="EditPanel" Margin="20" DataContext="{Binding SelectedItem}">
+
+                <StackPanel.Style>
+                    <Style TargetType="StackPanel">
+                        <Setter Property="Visibility" Value="Visible" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding}" Value="{x:Null}">
+                                <Setter Property="Visibility" Value="Hidden" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding IsVanilla}" Value="True">
+                                <Setter Property="IsEnabled" Value="False" />
+                                <Setter Property="Opacity" Value="0.7" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Style>
+
+                <TextBlock Text="书籍与掉落编辑 (DropBook)" FontSize="22" FontWeight="Bold" Margin="0,0,0,15"
+                           Foreground="#333" />
+
+                <!-- 1. 基础信息 -->
+                <Expander Header="⚙️ 基础参数 (Basic)" IsExpanded="True" Margin="0,0,0,15" BorderBrush="#DDD"
+                          BorderThickness="1">
+                    <StackPanel Margin="10">
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" /><ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="ID:" FontWeight="Bold" />
+                                <TextBox Text="{Binding Id, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="TextId:" FontWeight="Bold" />
+                                <TextBox Text="{Binding TextId, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" /><ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="Chapter (等级):" />
+                                <TextBox Text="{Binding Chapter, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+    
+                                <components:ImageSelector 
+                                    LabelText="Book Icon:"
+                                    SelectedImageName="{Binding BookIcon, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+        
+                                    ImageList="{Binding DataContext.Manager.Artworks, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    Manager="{Binding DataContext.Manager, RelativeSource={RelativeSource AncestorType=UserControl}}"
+        
+                                    PreviewWidth="80" PreviewHeight="80"/>
+        
+                            </StackPanel>
+                        </Grid>
+    
+
+                        <TextBlock Text="Localized Name (中文名):" Margin="0,10,0,0" FontWeight="Bold" />
+                        <TextBox Text="{Binding LocalizedName, UpdateSourceTrigger=PropertyChanged}" />
+                    </StackPanel>
+                </Expander>
+
+                <!-- 2. 核心书页掉落 -->
+                <Expander Header="🎁 掉落核心书页 (Equip Drops)" IsExpanded="True" Margin="0,0,0,15" BorderBrush="#DDD"
+                          BorderThickness="1">
+                    <StackPanel Margin="10">
+                        <Button Content="➕ 添加核心书页掉落"
+                                Command="{Binding DataContext.AddDropCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                HorizontalAlignment="Left" Padding="10,5" Margin="0,0,0,10" />
+
+                        <ItemsControl ItemsSource="{Binding DropItems}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type wrappers:UnifiedDropItem}">
+                                    <Border BorderBrush="#EEE" BorderThickness="1" Margin="0,2" Padding="5"
+                                            Background="#FAFAFA">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="80" /><ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="40" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="核心书页:" VerticalAlignment="Center" Foreground="Gray" />
+                                            <!-- 书页选择器 -->
+                                            <ComboBox Grid.Column="1" Margin="5,0"
+                                                      ItemsSource="{Binding DataContext.Manager.BookRepo.Items, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                      SelectedValue="{Binding ItemId, UpdateSourceTrigger=PropertyChanged}"
+                                                      SelectedValuePath="GlobalId"
+                                                      DisplayMemberPath="DisplayName" />
+                                            <Button Grid.Column="2" Content="❌" Foreground="Red"
+                                                    Command="{Binding DataContext.RemoveDropCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Expander>
+
+                <!-- 3. 战斗书页掉落 (Card Drops) -->
+                <Expander Header="🃏 掉落战斗书页 (Card Drops)" IsExpanded="True" Margin="0,0,0,15" BorderBrush="#DDD"
+                          BorderThickness="1">
+                    <StackPanel Margin="10">
+
+                        <!-- 按钮：如果没表则显示 -->
+                        <Button Content="为本书籍创建卡牌掉落表"
+                                Command="{Binding DataContext.CreateCardDropCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                Padding="10,5" Background="#E0F0FF" BorderBrush="#007ACC">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger
+                                            Binding="{Binding DataContext.CurrentCardDrop, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+
+                        <!-- 表格区域：如果有表则显示 -->
+                        <Grid>
+                            <Grid.Style>
+                                <Style TargetType="Grid">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                    <Style.Triggers>
+                                        <DataTrigger
+                                            Binding="{Binding DataContext.CurrentCardDrop, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Grid.Style>
+
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <DockPanel Grid.Row="0" Margin="0,0,0,5">
+                                <Button DockPanel.Dock="Right" Content="➕ 添加"
+                                        Command="{Binding DataContext.AddCardDropCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        Padding="10,2" Margin="5,0,0,0" />
+
+                                <ComboBox x:Name="CardSelector"
+                                          ItemsSource="{Binding DataContext.Manager.CardRepo.Items, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                          SelectedItem="{Binding DataContext.SelectedCardToAdd, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                          DisplayMemberPath="DisplayName"
+                                          IsEditable="True" />
+                            </DockPanel>
+
+                            <ListBox Grid.Row="1" Height="120" BorderBrush="#CCC" BorderThickness="1"
+                                     ItemsSource="{Binding DataContext.CurrentCardDrop.CardIds, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <DockPanel>
+                                            <Button Content="❌" DockPanel.Dock="Right" Padding="5,0"
+                                                    Command="{Binding DataContext.RemoveCardDropCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}" />
+                                            <TextBlock Text="{Binding}" VerticalAlignment="Center" Margin="5,0" />
+                                        </DockPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </StackPanel>
+                </Expander>
+
+                <TextBlock Height="50" />
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

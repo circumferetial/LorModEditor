@@ -45,41 +45,69 @@
             </Style.Triggers>
         </Style>
     </Window.Resources>
-
+    <Window.InputBindings>
+        <!-- Ctrl + S -> 触发 SaveProjectCommand -->
+        <KeyBinding Key="S" Modifiers="Control" Command="{Binding SaveProjectCommand}"/>
+        
+        <!-- Ctrl + O -> 触发 OpenProjectCommand -->
+        <KeyBinding Key="O" Modifiers="Control" Command="{Binding OpenProjectCommand}"/>
+        
+        <!-- (可选) Ctrl + E -> 触发 ExportCommand -->
+        <KeyBinding Key="E" Modifiers="Control" Command="{Binding ExportCommand}"/>
+    </Window.InputBindings>
     <DockPanel>
         <!-- 顶部菜单 -->
         <Border DockPanel.Dock="Top" Background="#F0F0F0" Padding="10">
-            <StackPanel Orientation="Horizontal">
-                <Button Content="📂 打开项目" Command="{Binding OpenProjectCommand}" Padding="10,5" Margin="0,0,10,0" />
-                <Button Content="💾 保存所有" Command="{Binding SaveProjectCommand}" Padding="10,5" Margin="0,0,30,0" />
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" /> <!-- 左侧核心按钮 -->
+                    <ColumnDefinition Width="*" />    <!-- 中间导航按钮 -->
+                    <ColumnDefinition Width="Auto" /> <!-- 右侧插件插槽 -->
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="📂 打开项目" Command="{Binding OpenProjectCommand}" Padding="10,5" Margin="0,0,10,0" />
+                    <Button Content="💾 保存所有" Command="{Binding SaveProjectCommand}" Padding="10,5" Margin="0,0,10,0" />
 
-                <!-- 导出按钮 (现在 IDE 应该能识别 ExportCommand 了) -->
-                <Button Content="📝 导出文档"
-                        Command="{Binding ExportCommand}"
-                        Padding="10,5" Margin="0,0,30,0"
-                        Background="#E0F7FA" BorderBrush="#00BCD4" FontWeight="Bold" />
+                    <!-- 导出按钮 (现在 IDE 应该能识别 ExportCommand 了) -->
+                    <Button Content="📝 导出文档"
+                            Command="{Binding ExportCommand}"
+                            Padding="10,5" Margin="0,0,30,0"
+                            Background="#E0F7FA" BorderBrush="#00BCD4" FontWeight="Bold" />
+                </StackPanel>
+                <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+                    <!-- 导航按钮 -->
+                    <RadioButton Content="🎴 战斗书页" Command="{Binding NavigateCommand}"
+                                 CommandParameter="CardEditorView"
+                                 Style="{StaticResource NavButtonStyle}" IsChecked="True" />
+                    <RadioButton Content="⚡ 被动能力" Command="{Binding NavigateCommand}"
+                                 CommandParameter="PassiveEditorView"
+                                 Style="{StaticResource NavButtonStyle}" />
+                    <RadioButton Content="📖 核心书页" Command="{Binding NavigateCommand}"
+                                 CommandParameter="BookEditorView"
+                                 Style="{StaticResource NavButtonStyle}" />
+                    <RadioButton Content="👹 敌人单位" Command="{Binding NavigateCommand}"
+                                 CommandParameter="EnemyEditorView"
+                                 Style="{StaticResource NavButtonStyle}" />
+                    <RadioButton Content="🏰 关卡配置" Command="{Binding NavigateCommand}"
+                                 CommandParameter="StageEditorView"
+                                 Style="{StaticResource NavButtonStyle}" />
+                    <RadioButton Content="📚 书籍掉落" Command="{Binding NavigateCommand}"
+                                 CommandParameter="DropBookEditorView" Style="{StaticResource NavButtonStyle}" />
+                    <RadioButton Content="📝 能力描述" Command="{Binding NavigateCommand}"
+                                 CommandParameter="AbilityEditorView"
+                                 Style="{StaticResource NavButtonStyle}" />
+                    <RadioButton Content="🔤 关键字" Command="{Binding NavigateCommand}"
+                                 CommandParameter="KeywordEditorView"
+                                 Style="{StaticResource NavButtonStyle}" />
 
-                <!-- 导航按钮 -->
-                <RadioButton Content="🎴 战斗书页" Command="{Binding NavigateCommand}" CommandParameter="CardEditorView"
-                             Style="{StaticResource NavButtonStyle}" IsChecked="True" />
-                <RadioButton Content="⚡ 被动能力" Command="{Binding NavigateCommand}" CommandParameter="PassiveEditorView"
-                             Style="{StaticResource NavButtonStyle}" />
-                <RadioButton Content="📖 核心书页" Command="{Binding NavigateCommand}" CommandParameter="BookEditorView"
-                             Style="{StaticResource NavButtonStyle}" />
-                <RadioButton Content="👹 敌人单位" Command="{Binding NavigateCommand}" CommandParameter="EnemyEditorView"
-                             Style="{StaticResource NavButtonStyle}" />
-                <RadioButton Content="🏰 关卡配置" Command="{Binding NavigateCommand}" CommandParameter="StageEditorView"
-                             Style="{StaticResource NavButtonStyle}" />
-                <RadioButton Content="📚 书籍掉落" Command="{Binding NavigateCommand}"
-                             CommandParameter="DropBookEditorView" Style="{StaticResource NavButtonStyle}" />
-                <RadioButton Content="📝 能力描述" Command="{Binding NavigateCommand}" CommandParameter="AbilityEditorView"
-                             Style="{StaticResource NavButtonStyle}" />
-                <RadioButton Content="🔤 关键字" Command="{Binding NavigateCommand}" CommandParameter="KeywordEditorView"
-                             Style="{StaticResource NavButtonStyle}" />
-
-                <RadioButton Content="⚙️ 设置" Command="{Binding NavigateCommand}" CommandParameter="SettingsView"
-                             Style="{StaticResource NavButtonStyle}" Margin="50,0,0,0" />
-            </StackPanel>
+                    <RadioButton Content="⚙️ 设置" Command="{Binding NavigateCommand}"
+                                 CommandParameter="SettingsView"
+                                 Style="{StaticResource NavButtonStyle}" Margin="50,0,0,0" />
+                </WrapPanel>
+                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <ContentControl prism:RegionManager.RegionName="ToolbarRegion" />
+                </StackPanel>
+            </Grid>
         </Border>
 
         <!-- 内容区域 -->

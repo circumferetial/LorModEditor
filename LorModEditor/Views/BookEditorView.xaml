@@ -129,23 +129,23 @@
                         </Grid>
                         <Grid Margin="0,0,0,10">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/><ColumnDefinition Width="10"/>
-                                <ColumnDefinition Width="*"/><ColumnDefinition Width="10"/>
-                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*" /><ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="*" /><ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
 
                             <!-- 图标 (带预览) -->
                             <StackPanel Grid.Column="0">
                                 <components:ImageSelector LabelText="Book Icon (图标):"
-                                                    SelectedImageName="{Binding BookIcon, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
-                                                    ImageList="{Binding DataContext.Manager.Artworks, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                    Manager="{Binding DataContext.Manager, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                    PreviewWidth="100" PreviewHeight="100"/>
+                                                          SelectedImageName="{Binding BookIcon, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                                                          ImageList="{Binding DataContext.Manager.Artworks, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                          Manager="{Binding DataContext.Manager, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                          PreviewWidth="100" PreviewHeight="100" />
                             </StackPanel>
 
                             <!-- 皮肤 (手写或默认列表) -->
                             <StackPanel Grid.Column="2">
-                                <TextBlock Text="Character Skin (皮肤):"/>
+                                <TextBlock Text="Character Skin (皮肤):" />
                                 <!-- 这里 ItemsSource 可以绑定一个 GlobalValues.CommonSkins 列表 -->
                                 <ComboBox IsEditable="True"
                                           Text="{Binding CharacterSkin, UpdateSourceTrigger=PropertyChanged}">
@@ -157,9 +157,9 @@
                                     </ComboBox.Items>
                                 </ComboBox>
                             </StackPanel>
-    
+
                             <!-- 占位 -->
-                            <StackPanel Grid.Column="4"/>
+                            <StackPanel Grid.Column="4" />
                         </Grid>
                     </StackPanel>
                 </Expander>

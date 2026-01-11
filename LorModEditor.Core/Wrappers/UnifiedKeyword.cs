@@ -39,8 +39,8 @@ public class UnifiedKeyword : XWrapper
         get => GetElementValue(Element, "Desc", "Desc...");
         set => SetElementValue(Element, "Desc", value);
     }
-    [NoAutoInit]
-    public string DisplayName => $"{Id} - {Name}";
+
+    [NoAutoInit] public string DisplayName => $"{Id} - {Name}";
 
     // 其实对于纯文本 XML，Wrapper 很少需要自己创建自己 (因为 Create 时已经创建好了)
     // 但如果我们需要支持“复制”或者特殊操作，保留这个 parent 引用是有用的。

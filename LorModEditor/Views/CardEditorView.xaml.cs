@@ -1,19 +1,13 @@
 using System.Collections;
-using System.ComponentModel;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
-using LorModEditor.Core;
-using LorModEditor.ViewModels;
-
-using System;
 
 namespace LorModEditor.Views;
 
 public partial class CardEditorView : IRegionMemberLifetime
 {
     private readonly CardSorter _sorter = new();
-
-    public bool KeepAlive => true;
 
     public CardEditorView()
     {
@@ -22,6 +16,8 @@ public partial class CardEditorView : IRegionMemberLifetime
         // 监听 Loaded 事件，确保界面显示出来后立即应用排序
         Loaded += (_, _) => ApplyFilterAndSort();
     }
+
+    public bool KeepAlive => true;
 
     // =============================================================
     //  列表排序与过滤 (View 层负责)
@@ -55,7 +51,7 @@ public partial class CardEditorView : IRegionMemberLifetime
 
         // 2. 排序器 (Mod 优先 + ID 排序)
         view.CustomSort = _sorter;
-            
+
         // 3. 刷新
         view.Refresh();
     }
@@ -68,12 +64,12 @@ public partial class CardEditorView : IRegionMemberLifetime
     {
         if (CardListBox.SelectedItem != null)
         {
-            EditPanel.Visibility = System.Windows.Visibility.Visible;
+            EditPanel.Visibility = Visibility.Visible;
             // 注意：EditPanel.DataContext 已经在 XAML 里绑定了，不需要手动设
         }
         else
         {
-            EditPanel.Visibility = System.Windows.Visibility.Hidden;
+            EditPanel.Visibility = Visibility.Hidden;
         }
     }
 }

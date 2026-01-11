@@ -1,23 +1,21 @@
 using System.ComponentModel;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
-using LorModEditor.Core;
-
-using System;
 
 namespace LorModEditor.Views;
 
 public partial class DropBookEditorView : IRegionMemberLifetime
 {
-    public bool KeepAlive => true;
-
     public DropBookEditorView()
     {
         InitializeComponent();
-            
+
         // 列表排序 (Loaded 时触发)
         Loaded += (s, e) => ApplyFilterAndSort();
     }
+
+    public bool KeepAlive => true;
 
     // =============================================================
     //  列表排序与过滤 (View 层负责)
@@ -34,7 +32,7 @@ public partial class DropBookEditorView : IRegionMemberLifetime
             view.SortDescriptions.Add(new SortDescription("IsVanilla", ListSortDirection.Ascending));
             view.SortDescriptions.Add(new SortDescription("Id", ListSortDirection.Ascending));
 
-            string filterText = SearchBox.Text ?? "";
+            var filterText = SearchBox.Text ?? "";
             view.Filter = o =>
             {
                 if (string.IsNullOrEmpty(filterText)) return true;
@@ -54,12 +52,12 @@ public partial class DropBookEditorView : IRegionMemberLifetime
     {
         if (BookList.SelectedItem != null)
         {
-            EditPanel.Visibility = System.Windows.Visibility.Visible;
+            EditPanel.Visibility = Visibility.Visible;
             // 注意：DataContext 已经通过 XAML 的 SelectedItem 绑定了，这里不需要手动赋值
         }
         else
         {
-            EditPanel.Visibility = System.Windows.Visibility.Hidden;
+            EditPanel.Visibility = Visibility.Hidden;
         }
     }
 

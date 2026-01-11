@@ -100,19 +100,19 @@
                                 <TextBox Text="{Binding Chapter, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
                             <StackPanel Grid.Column="2">
-    
-                                <components:ImageSelector 
+
+                                <components:ImageSelector
                                     LabelText="Book Icon:"
                                     SelectedImageName="{Binding BookIcon, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-        
+
                                     ImageList="{Binding DataContext.Manager.Artworks, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                     Manager="{Binding DataContext.Manager, RelativeSource={RelativeSource AncestorType=UserControl}}"
-        
-                                    PreviewWidth="80" PreviewHeight="80"/>
-        
+
+                                    PreviewWidth="80" PreviewHeight="80" />
+
                             </StackPanel>
                         </Grid>
-    
+
 
                         <TextBlock Text="Localized Name (中文名):" Margin="0,10,0,0" FontWeight="Bold" />
                         <TextBox Text="{Binding LocalizedName, UpdateSourceTrigger=PropertyChanged}" />

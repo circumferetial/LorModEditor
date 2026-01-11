@@ -25,8 +25,8 @@ public class UnifiedCardDrop : XWrapper
             OnPropertyChanged(nameof(DisplayName));
         }
     }
-    [NoAutoInit]
-    public string DisplayName => $"DropTable For Book [{BookId}]";
+
+    [NoAutoInit] public string DisplayName => $"DropTable For Book [{BookId}]";
 
     // --- 核心修复 ---
     public ObservableCollection<LorId> CardIds { get; } = new();

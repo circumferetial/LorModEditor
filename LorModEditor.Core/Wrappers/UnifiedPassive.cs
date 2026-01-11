@@ -17,8 +17,8 @@ public class UnifiedPassive : XWrapper
         _text = text;
         InitDefaults();
     }
-    [NoAutoInit]
-    public string DisplayName => $"{GlobalId} {Name}";
+
+    [NoAutoInit] public string DisplayName => $"{GlobalId} {Name}";
 
     public string Id
     {

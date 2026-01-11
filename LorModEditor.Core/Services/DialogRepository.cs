@@ -18,7 +18,7 @@ public class DialogRepository : BaseRepository<UnifiedCharacterDialog>
     {
         if (!HasData)
         {
-            CreateXmlTemplate(Path.Combine(root, "Localize", lang, "BattleDialogues"), "BattleDialogRoot", modId,
+            CreateXmlTemplate(Path.Combine(root, "Localize", lang, "BattleDialogues”，“BattleDialogues.xml"), "BattleDialogRoot", modId,
                 AddDataDoc);
         }
     }

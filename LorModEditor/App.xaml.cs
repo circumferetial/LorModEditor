@@ -1,19 +1,23 @@
-﻿using System.Windows;
-using System.Windows.Threading;
+﻿using System.IO;
+using System.Windows;
 using LorModEditor.Core;
-using LorModEditor.Core.Log;
 using LorModEditor.Views;
 
 namespace LorModEditor;
 
-public partial class App : PrismApplication
+public partial class App
 {
+    protected override Window CreateShell()
+    {
+        return Container.Resolve<MainWindow>();
+    }
+
     protected override void RegisterTypes(IContainerRegistry containerRegistry)
     {
+        // 核心单例
         containerRegistry.RegisterSingleton<ProjectManager>();
 
-        // 【核心】注册导航视图
-        // 只要注册了，Prism 就能通过名字找到它们
+        // 注册内置导航视图
         containerRegistry.RegisterForNavigation<CardEditorView>();
         containerRegistry.RegisterForNavigation<PassiveEditorView>();
         containerRegistry.RegisterForNavigation<BookEditorView>();
@@ -21,58 +25,39 @@ public partial class App : PrismApplication
         containerRegistry.RegisterForNavigation<StageEditorView>();
         containerRegistry.RegisterForNavigation<DropBookEditorView>();
         containerRegistry.RegisterForNavigation<AbilityEditorView>();
-        containerRegistry.RegisterForNavigation<SettingsView>();
         containerRegistry.RegisterForNavigation<KeywordEditorView>();
+        containerRegistry.RegisterForNavigation<SettingsView>();
     }
 
-    protected override Window CreateShell() =>
-        // Container.Resolve 会自动帮你把依赖项注入进去
-        Container.Resolve<MainWindow>();
-
-    protected override void OnStartup(StartupEventArgs e)
+    // =========================================================
+    // 【核心修正】创建目录时就决定加载策略
+    // =========================================================
+    protected override IModuleCatalog CreateModuleCatalog()
     {
-        base.OnStartup(e);
+        // 1. 创建一个目录
+        var catalog = new DirectoryModuleCatalog();
+            
+        // 2. 指定 Plugins 文件夹路径
+        var pluginPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Plugins");
+        if (!Directory.Exists(pluginPath))
+            Directory.CreateDirectory(pluginPath);
+            
+        catalog.ModulePath = pluginPath;
 
-        // 1. 捕获 UI 线程的未处理异常
-        DispatcherUnhandledException += OnDispatcherUnhandledException;
-
-        // 2. 捕获后台线程 (Task) 的未处理异常
-        TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
-
-        // 3. 捕获非托管异常 (兜底)
-        AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
-
-        Logger.Info("Application Startup.");
+        return catalog;
     }
 
-    private static void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
+    // =========================================================
+    // 如果你将来要把内置功能拆成 Module (比如 CardModule)，
+    // 你可以在这里 AddModule。但目前你是单体架构，这里可以留空。
+    // =========================================================
+    protected override void ConfigureModuleCatalog(IModuleCatalog moduleCatalog)
     {
-        Logger.Error("UI Thread Crash!", e.Exception);
-        MessageBox.Show($"程序遇到严重错误：\n{e.Exception.Message}\n\n详情请查看 latest.log", "崩溃", MessageBoxButton.OK,
-            MessageBoxImage.Error);
-
-        // 设置为 true 表示“我处理了”，防止程序立即闪退（视情况而定，严重错误最好还是让它退）
-        e.Handled = true;
-    }
-
-    private static void OnUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
-    {
-        Logger.Error("Background Task Crash!", e.Exception);
-        e.SetObserved();// 标记为已观察，防止崩溃
-    }
-
-    private static void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)
-    {
-        if (e.ExceptionObject is Exception ex)
-        {
-            Logger.Error("Critical System Crash!", ex);
-            MessageBox.Show("发生致命错误，程序即将退出。", "Fatal Error", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-    }
-
-    protected override void OnExit(ExitEventArgs e)
-    {
-        Logger.Info("Application Exit.");
-        base.OnExit(e);
+        // 如果以后有内置模块，这样写：
+        // moduleCatalog.AddModule<LorModEditor.Modules.Card.CardModule>();
+            
+        // 因为我们在 CreateModuleCatalog 里已经返回了 DirectoryModuleCatalog，
+        // Prism 会自动扫描那个文件夹。
+        base.ConfigureModuleCatalog(moduleCatalog);
     }
 }

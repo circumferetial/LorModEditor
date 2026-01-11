@@ -38,6 +38,7 @@ public class UnifiedBook : XWrapper
             return node;
         }
     }
+
     public string BookIcon
     {
         get => GetElementValue(_data, "BookIcon", "FullStopOffice");
@@ -51,8 +52,8 @@ public class UnifiedBook : XWrapper
         get => GetElementValue(_data, "CharacterSkin", "Liwei");
         set => SetElementValue(_data, "CharacterSkin", value);
     }
-    [NoAutoInit]
-    public string DisplayName => $"{GlobalId} {Name}";
+
+    [NoAutoInit] public string DisplayName => $"{GlobalId} {Name}";
 
     // --- ID (LorId) ---
     // 注意：这里的 ID 实际上是指向自身的 GlobalId，而不是引用别人的 ID

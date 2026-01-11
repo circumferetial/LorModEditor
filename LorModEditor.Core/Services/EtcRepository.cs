@@ -76,10 +76,8 @@ public class EtcRepository
     }
 
 // 修改 GetText 方法
-    public string? GetText(string id) // 返回可空字符串
-    {
-        return string.IsNullOrEmpty(id) ? null : TextCache.GetValueOrDefault(id);// 没找到返回 null
-    }
+    public string? GetText(string id)// 返回可空字符串
+        => string.IsNullOrEmpty(id) ? null : TextCache.GetValueOrDefault(id);// 没找到返回 null
 
     public void SetText(string id, string value)
     {

@@ -30,8 +30,9 @@ public abstract class XWrapper(XElement element) : INotifyPropertyChanged
             return new LorId(packageId, id);
         }
     }
-    [NoAutoInit]
-    public bool IsVanilla => GlobalId.IsVanilla;
+
+    [NoAutoInit] public bool IsVanilla => GlobalId.IsVanilla;
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public void InitDefaults()
@@ -46,7 +47,7 @@ public abstract class XWrapper(XElement element) : INotifyPropertyChanged
             // 跳过只读属性、索引器等
             if (!prop.CanRead || !prop.CanWrite) continue;
             if (prop.GetCustomAttribute<NoAutoInitAttribute>() != null) continue;
-            
+
             if (prop.PropertyType.IsGenericType) continue;// 跳过 List/Collection
 
             try

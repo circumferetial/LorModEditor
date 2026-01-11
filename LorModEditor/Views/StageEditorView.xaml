@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             
+
              xmlns:prism="http://prismlibrary.com/"
              xmlns:core="clr-namespace:LorModEditor.Core;assembly=LorModEditor.Core"
              xmlns:wrappers="clr-namespace:LorModEditor.Core.Wrappers;assembly=LorModEditor.Core"
@@ -11,9 +11,9 @@
              xmlns:components="clr-namespace:LorModEditor.Views.Components"
 
              mc:Ignorable="d"
-             
+
              prism:ViewModelLocator.AutoWireViewModel="True"
-             
+
              d:DataContext="{d:DesignInstance Type=viewmodels:StageEditorViewModel, IsDesignTimeCreatable=False}"
 
              d:DesignHeight="700" d:DesignWidth="1000">
@@ -36,7 +36,8 @@
         <Border Grid.Row="0" Grid.ColumnSpan="2" Background="#F5F5F5" Padding="10,6" BorderBrush="#DDD"
                 BorderThickness="0,0,0,1">
             <StackPanel Orientation="Horizontal">
-                <Button Content="➕ 新建关卡" Command="{Binding CreateCommand}" Padding="12,5" Margin="0,0,10,0" FontWeight="Bold" />
+                <Button Content="➕ 新建关卡" Command="{Binding CreateCommand}" Padding="12,5" Margin="0,0,10,0"
+                        FontWeight="Bold" />
                 <Button Content="🗑️ 删除关卡" Command="{Binding DeleteCommand}" Padding="12,5" Background="#FFE6E6"
                         BorderBrush="#FFCCCC" />
             </StackPanel>
@@ -118,12 +119,12 @@
                             <!-- Story Type 使用组件 -->
                             <StackPanel Grid.Column="4">
                                 <!-- 复用 ImageSelector -->
-                                <components:ImageSelector 
+                                <components:ImageSelector
                                     LabelText="Story Type (图标):"
                                     SelectedImageName="{Binding StoryType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                     ImageList="{Binding DataContext.Manager.Artworks, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                     Manager="{Binding DataContext.Manager, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                    PreviewWidth="100" PreviewHeight="100"/>
+                                    PreviewWidth="100" PreviewHeight="100" />
                             </StackPanel>
                         </Grid>
 
@@ -188,7 +189,7 @@
                 <Expander Header="🌊 战斗波次 (Waves)" IsExpanded="True" Margin="0,0,0,15" BorderBrush="#DDD"
                           BorderThickness="1">
                     <StackPanel Margin="10">
-                        <Button Content="➕ 添加新波次 (Wave)" 
+                        <Button Content="➕ 添加新波次 (Wave)"
                                 Command="{Binding DataContext.AddWaveCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                 HorizontalAlignment="Left" Padding="10,5" Margin="0,0,0,10" />
 
@@ -231,8 +232,9 @@
                                             </StackPanel>
 
                                             <!-- 敌人列表 -->
-                                            <TextBlock Text="Enemies (敌人单位):" FontWeight="Bold" Margin="0,5,0,2"/>
-                                            <ListBox ItemsSource="{Binding Units}" Height="100" BorderBrush="#CCC" BorderThickness="1">
+                                            <TextBlock Text="Enemies (敌人单位):" FontWeight="Bold" Margin="0,5,0,2" />
+                                            <ListBox ItemsSource="{Binding Units}" Height="100" BorderBrush="#CCC"
+                                                     BorderThickness="1">
                                                 <ListBox.ItemTemplate>
                                                     <DataTemplate>
                                                         <DockPanel>

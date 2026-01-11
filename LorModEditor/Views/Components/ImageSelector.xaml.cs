@@ -1,4 +1,3 @@
-using System;
 using System.Collections;
 using System.IO;
 using System.Windows;
@@ -11,19 +10,34 @@ namespace LorModEditor.Views.Components;
 
 public partial class ImageSelector
 {
-    public ImageSelector()
-    {
-        InitializeComponent();
-    }
-
     // ==========================================
     // 依赖属性定义 (API)
     // ==========================================
 
     // 1. ProjectManager (必填，用于加载图片)
     public static readonly DependencyProperty ManagerProperty =
-        DependencyProperty.Register("Manager", typeof(ProjectManager), typeof(ImageSelector), 
+        DependencyProperty.Register(nameof(Manager), typeof(ProjectManager), typeof(ImageSelector),
             new PropertyMetadata(null, OnManagerChanged));
+
+    // 2. 选中的图片名 (双向绑定)
+    public static readonly DependencyProperty SelectedImageNameProperty =
+        DependencyProperty.Register(nameof(SelectedImageName), typeof(string), typeof(ImageSelector),
+            new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault,
+                OnImageNameChanged));
+
+    // 3. 图片列表源 (Items)
+    public static readonly DependencyProperty ImageListProperty =
+        DependencyProperty.Register(nameof(ImageList), typeof(IEnumerable), typeof(ImageSelector));
+
+    // 4. 标题文本
+    public static readonly DependencyProperty LabelTextProperty =
+        DependencyProperty.Register(nameof(LabelText), typeof(string), typeof(ImageSelector),
+            new PropertyMetadata("Image:"));
+
+    public ImageSelector()
+    {
+        InitializeComponent();
+    }
 
     public ProjectManager Manager
     {
@@ -31,20 +45,11 @@ public partial class ImageSelector
         set => SetValue(ManagerProperty, value);
     }
 
-    // 2. 选中的图片名 (双向绑定)
-    public static readonly DependencyProperty SelectedImageNameProperty =
-        DependencyProperty.Register("SelectedImageName", typeof(string), typeof(ImageSelector), 
-            new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, OnImageNameChanged));
-
     public string SelectedImageName
     {
         get => (string)GetValue(SelectedImageNameProperty);
         set => SetValue(SelectedImageNameProperty, value);
     }
-
-    // 3. 图片列表源 (Items)
-    public static readonly DependencyProperty ImageListProperty =
-        DependencyProperty.Register("ImageList", typeof(IEnumerable), typeof(ImageSelector));
 
     public IEnumerable ImageList
     {
@@ -52,16 +57,12 @@ public partial class ImageSelector
         set => SetValue(ImageListProperty, value);
     }
 
-    // 4. 标题文本
-    public static readonly DependencyProperty LabelTextProperty =
-        DependencyProperty.Register("LabelText", typeof(string), typeof(ImageSelector), new PropertyMetadata("Image:"));
-
     public string LabelText
     {
         get => (string)GetValue(LabelTextProperty);
         set => SetValue(LabelTextProperty, value);
     }
-        
+
     // 5. 预览图尺寸 (普通属性即可，不用DP，除非你想绑定)
     public double PreviewWidth { get; set; } = 200;
     public double PreviewHeight { get; set; } = 150;
@@ -101,7 +102,7 @@ public partial class ImageSelector
                 var bitmap = new BitmapImage();
                 bitmap.BeginInit();
                 bitmap.UriSource = new Uri(path);
-                bitmap.CacheOption = BitmapCacheOption.OnLoad; // 解除文件占用
+                bitmap.CacheOption = BitmapCacheOption.OnLoad;// 解除文件占用
                 bitmap.EndInit();
                 PreviewImage.Source = bitmap;
             }
@@ -110,9 +111,9 @@ public partial class ImageSelector
                 PreviewImage.Source = null;
             }
         }
-        catch 
-        { 
-            if (PreviewImage != null) PreviewImage.Source = null; 
+        catch
+        {
+            PreviewImage?.Source = null;
         }
     }
 
@@ -126,21 +127,18 @@ public partial class ImageSelector
         if (ImageCombo.ItemsSource != null)
         {
             var view = CollectionViewSource.GetDefaultView(ImageCombo.ItemsSource);
-            if (view != null)
+            view?.Filter = o =>
             {
-                view.Filter = o => 
-                {
-                    if (string.IsNullOrEmpty(tb.Text)) return true;
-                    if (o is string s) return s.Contains(tb.Text, StringComparison.OrdinalIgnoreCase);
-                    return false;
-                };
-            }
+                if (string.IsNullOrEmpty(tb.Text)) return true;
+                if (o is string s) return s.Contains(tb.Text, StringComparison.OrdinalIgnoreCase);
+                return false;
+            };
         }
 
         // 2. 自动展开
         if (ImageCombo.IsKeyboardFocusWithin && !ImageCombo.IsDropDownOpen)
             ImageCombo.IsDropDownOpen = true;
-            
+
         // 3. 实时刷新图片
         LoadImage(tb.Text);
     }
@@ -154,8 +152,7 @@ public partial class ImageSelector
             // 取消全选体验优化
             Dispatcher.BeginInvoke(new Action(() =>
             {
-                var tb = ImageCombo.Template.FindName("PART_EditableTextBox", ImageCombo) as TextBox;
-                if (tb != null)
+                if (ImageCombo.Template.FindName("PART_EditableTextBox", ImageCombo) is TextBox tb)
                 {
                     tb.SelectionStart = tb.Text.Length;
                     tb.SelectionLength = 0;

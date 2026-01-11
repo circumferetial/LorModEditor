@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Windows;
 using System.Xml.Linq;
 using JetBrains.Annotations;
 using LorModEditor.Core.Attributes;
@@ -73,8 +72,8 @@ public class UnifiedDropBook : XWrapper
         LoadDrops();
         InitDefaults();
     }
-    [NoAutoInit]
-    public string DisplayName => $"{GlobalId} {LocalizedName}";
+
+    [NoAutoInit] public string DisplayName => $"{GlobalId} {LocalizedName}";
 
     public string Id
     {
@@ -108,9 +107,9 @@ public class UnifiedDropBook : XWrapper
         {
             // 尝试获取翻译
             var text = _etcRepo?.GetText(TextId);
-        
+
             // 如果找到了，返回翻译；没找到，返回 "未翻译" 或 TextId
-            return text ?? "未翻译"; 
+            return text ?? "未翻译";
         }
         set
         {
@@ -123,6 +122,7 @@ public class UnifiedDropBook : XWrapper
             OnPropertyChanged(nameof(DisplayName));
         }
     }
+
     public string BookIcon
     {
         get => GetElementValue(_data, "BookIcon", "FullStopOffice");

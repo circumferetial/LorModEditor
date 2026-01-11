@@ -44,13 +44,11 @@ public class EnemyEditorViewModel : BindableBase
     // 逻辑实现
     private void Delete()
     {
-        if (SelectedItem != null &&
-            MessageBox.Show($"确定删除敌人 [{SelectedItem.DisplayName}]？", "提示", MessageBoxButton.YesNo) ==
-            MessageBoxResult.Yes)
-        {
-            Manager.EnemyRepo.Delete(SelectedItem);
-            SelectedItem = null;
-        }
+        if (SelectedItem == null ||
+            MessageBox.Show($"确定删除敌人 [{SelectedItem.DisplayName}]？", "提示", MessageBoxButton.YesNo) !=
+            MessageBoxResult.Yes) return;
+        Manager.EnemyRepo.Delete(SelectedItem);
+        SelectedItem = null;
     }
 
     private void AddDrop()

@@ -21,7 +21,14 @@
             <Setter Property="Padding" Value="5,2" />
         </Style>
     </UserControl.Resources>
-
+    <UserControl.InputBindings>
+        <!-- Ctrl + N -> 新建卡牌 -->
+        <KeyBinding Key="N" Modifiers="Control" Command="{Binding CreateCommand}"/>
+        
+        <!-- Delete 键 -> 删除卡牌 (注意：有些输入框可能会抢占 Delete 键，需注意焦点) -->
+        <!-- 通常为了安全，删除操作建议保留 Ctrl+Delete 或者只用按钮 -->
+        <KeyBinding Key="Delete" Modifiers="Control" Command="{Binding DeleteCommand}"/>
+    </UserControl.InputBindings>
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="280" />
@@ -123,16 +130,16 @@
                 <!-- 1. 卡图预览区 -->
                 <Expander Header="🖼️ 卡图预览">
                     <StackPanel Margin="10">
-        
+
                         <!-- 一行代码搞定！ -->
-                        <components:ImageSelector 
+                        <components:ImageSelector
                             LabelText="Card Artwork:"
                             SelectedImageName="{Binding ArtworkName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                             ImageList="{Binding DataContext.Manager.Artworks, RelativeSource={RelativeSource AncestorType=UserControl}}"
                             Manager="{Binding DataContext.Manager, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                            
-                            PreviewWidth="205" PreviewHeight="155"/>
-            
+
+                            PreviewWidth="205" PreviewHeight="155" />
+
                     </StackPanel>
                 </Expander>
 

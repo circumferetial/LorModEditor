@@ -77,8 +77,8 @@ public class UnifiedStage : XWrapper
         LoadInvitationBooks();
         InitDefaults();
     }
-    [NoAutoInit]
-    public string DisplayName => $"{GlobalId} {Name}";
+
+    [NoAutoInit] public string DisplayName => $"{GlobalId} {Name}";
 
     // ID 是属性 (注意 StageInfo 里通常是小写 id)
     public string Id

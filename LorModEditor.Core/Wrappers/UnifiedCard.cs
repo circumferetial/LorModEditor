@@ -22,8 +22,8 @@ public class UnifiedCard : XWrapper
         LoadKeywords();
         InitDefaults();
     }
-    [NoAutoInit]
-    public string DisplayName => $"{GlobalId} {Name}";
+
+    [NoAutoInit] public string DisplayName => $"{GlobalId} {Name}";
 
     // ID 依然保持 string，因为有些 Modder 喜欢用字符串ID
     public string Id

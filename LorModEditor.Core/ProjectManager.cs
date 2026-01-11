@@ -8,11 +8,9 @@ namespace LorModEditor.Core;
 
 public class ProjectManager
 {
-    public ProjectManager()
-    {
+    public ProjectManager() =>
         // 注入依赖
         DropBookRepo.EtcRepo = EtcRepo;
-    }
 
     // 仓库
     public CardRepository CardRepo { get; } = new();

@@ -60,8 +60,8 @@ public class UnifiedEnemy : XWrapper
         LoadDrops();
         InitDefaults();
     }
-    [NoAutoInit]
-    public string DisplayName => $"{GlobalId} {Name}";
+
+    [NoAutoInit] public string DisplayName => $"{GlobalId} {Name}";
 
     // --- ID (改为 string 以保持统一) ---
     public string Id

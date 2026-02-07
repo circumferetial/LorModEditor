@@ -1,0 +1,321 @@
+<UserControl x:Class="Synthesis.Feature.OldSkinEditor.SkinEditorView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+
+             xmlns:prism="http://prismlibrary.com/"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:oldSkinEditor="clr-namespace:Synthesis.Feature.OldSkinEditor"
+
+             mc:Ignorable="d"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             d:DataContext="{d:DesignInstance Type=oldSkinEditor:SkinEditorViewModel, IsDesignTimeCreatable=False}"
+
+             d:DesignHeight="800" d:DesignWidth="1200"
+             TextElement.Foreground="{DynamicResource MaterialDesignBody}">
+
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="280" /> <!-- 左侧导航稍微加宽 -->
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="300" /> <!-- 右侧属性面板 -->
+        </Grid.ColumnDefinitions>
+
+        <!-- =================================================================== -->
+        <!-- [左侧] 皮肤与动作管理 -->
+        <!-- =================================================================== -->
+        <Grid Grid.Column="0" Background="{DynamicResource MaterialDesignPaper}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" /> <!-- 皮肤管理 -->
+                <RowDefinition Height="*" />    <!-- 动作列表 -->
+            </Grid.RowDefinitions>
+
+            <!-- 1. 皮肤选择区 -->
+            <StackPanel Grid.Row="0" Margin="10">
+                <TextBlock Text="Skin (皮肤)" FontWeight="Bold" Margin="0,0,0,5"
+                           Foreground="{DynamicResource PrimaryHueMidBrush}" />
+
+                <!-- 皮肤下拉框 -->
+                <ComboBox ItemsSource="{Binding Manager.SkinRepo.Items}"
+                          SelectedItem="{Binding SelectedItem}"
+                          DisplayMemberPath="DisplayName"
+                          Style="{StaticResource MaterialDesignFloatingHintComboBox}"
+                          materialDesign:HintAssist.Hint="选择当前编辑的皮肤..."
+                          Margin="0,0,0,10" />
+
+                <!-- 皮肤操作按钮 -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Button Grid.Column="0" Content="➕ 新建皮肤" Command="{Binding CreateCommand}"
+                            Style="{StaticResource MaterialDesignRaisedButton}"
+                            Margin="0,0,5,0" />
+
+                    <!-- 可以在这里加个删除按钮 -->
+                </Grid>
+
+                <Separator Background="{DynamicResource MaterialDesignDivider}" Margin="0,15" />
+            </StackPanel>
+
+            <!-- 2. 动作列表 (Action List) -->
+            <DockPanel Grid.Row="1" Margin="10,0,10,10">
+                <!-- 列表头 -->
+                <Grid DockPanel.Dock="Top" Margin="0,0,0,10">
+                    <TextBlock Text="Actions (动作序列)" VerticalAlignment="Center" FontWeight="Bold" />
+                    <Button HorizontalAlignment="Right" Content="➕ 添加动作"
+                            Command="{Binding AddCustomActionCommand}"
+                            Style="{StaticResource MaterialDesignOutlinedButton}"
+                            Padding="8,4" Height="26" FontSize="12" />
+                </Grid>
+
+                <!-- 动作列表 -->
+                <ListBox x:Name="ActionList"
+                         ItemsSource="{Binding SelectedItem.Actions}"
+                         SelectedItem="{Binding SelectedAction}"
+                         SelectionChanged="ActionList_SelectionChanged"
+                         Style="{StaticResource MaterialDesignOutlinedListBox}"
+                         Background="Transparent"
+                         Padding="0">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <!-- 简单的选中高亮条 -->
+                            <Border Padding="10,8" Background="Transparent"
+                                    BorderBrush="{DynamicResource MaterialDesignDivider}" BorderThickness="0,0,0,1">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <materialDesign:PackIcon Kind="MovieOpen" Opacity="0.5" VerticalAlignment="Center"
+                                                             Margin="0,0,10,0" />
+                                    <TextBlock Grid.Column="1" Text="{Binding ActionName}" VerticalAlignment="Center" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+        </Grid>
+
+        <!-- =================================================================== -->
+        <!-- [中间] 视口画布 (Viewport) -->
+        <!-- =================================================================== -->
+        <Border Grid.Column="1" Background="#1E1E1E" ClipToBounds="True">
+            <Grid>
+                <!-- 背景网格装饰 (可选) -->
+                <Canvas>
+                    <Canvas.Background>
+                        <DrawingBrush TileMode="Tile" Viewport="0,0,40,40" ViewportUnits="Absolute" Opacity="0.05">
+                            <DrawingBrush.Drawing>
+                                <GeometryDrawing>
+                                    <GeometryDrawing.Geometry>
+                                        <GeometryGroup>
+                                            <LineGeometry StartPoint="0,0" EndPoint="0,40" />
+                                            <LineGeometry StartPoint="0,0" EndPoint="40,0" />
+                                        </GeometryGroup>
+                                    </GeometryDrawing.Geometry>
+                                    <GeometryDrawing.Pen>
+                                        <Pen Brush="White" Thickness="1" />
+                                    </GeometryDrawing.Pen>
+                                </GeometryDrawing>
+                            </DrawingBrush.Drawing>
+                            </DrawingBrush>
+                    </Canvas.Background>
+                </Canvas>
+
+                <!-- 核心交互 Canvas (保留原逻辑) -->
+                <Canvas x:Name="ViewportCanvas" Background="Transparent"
+                        MouseWheel="Viewport_MouseWheel"
+                        MouseRightButtonDown="Viewport_MouseRightDown"
+                        MouseRightButtonUp="Viewport_MouseRightUp"
+                        MouseMove="Viewport_MouseMove">
+
+                    <!-- 世界层 -->
+                    <Canvas x:Name="WorldCanvas">
+                        <Canvas.RenderTransform>
+                            <TransformGroup>
+                                <ScaleTransform x:Name="ViewScale" ScaleX="1" ScaleY="1" />
+                                <TranslateTransform x:Name="ViewTranslate" X="400" Y="300" />
+                            </TransformGroup>
+                        </Canvas.RenderTransform>
+
+                        <!-- 坐标轴 -->
+                        <!-- X轴 (地面) -->
+                        <Line X1="-10000" Y1="0" X2="10000" Y2="0" Stroke="#00E676" StrokeThickness="2" Opacity="0.8"
+                              IsHitTestVisible="False" />
+                        <!-- Y轴 (中心) -->
+                        <Line X1="0" Y1="-10000" X2="0" Y2="10000" Stroke="#00E676" StrokeThickness="1" Opacity="0.4"
+                              IsHitTestVisible="False"
+                              StrokeDashArray="4 4" />
+
+                        <!-- 身体图片 -->
+                        <!-- 增加 DropShadow 稍微让图片浮起来一点 -->
+                        <Image x:Name="BodyImage"
+                               Stretch="Fill"
+                               RenderOptions.BitmapScalingMode="NearestNeighbor"
+                               MouseLeftButtonDown="Body_MouseDown"
+                               MouseLeftButtonUp="Body_MouseUp"
+                               Cursor="SizeAll">
+                            <Image.Effect>
+                                <DropShadowEffect ShadowDepth="0" BlurRadius="10" Opacity="0.2" />
+                            </Image.Effect>
+                        </Image>
+
+                        <!-- 头部锚点 -->
+                        <!-- 优化视觉：红点加白边，更容易看清 -->
+                        <Grid x:Name="HeadPoint" Width="14" Height="14"
+                              MouseLeftButtonDown="Head_MouseDown"
+                              MouseLeftButtonUp="Head_MouseUp"
+                              Cursor="Hand"
+                              Visibility="{Binding SelectedAction.HeadEnable, Converter={StaticResource BoolToVis}}">
+                            <!-- 这里的 Canvas.Left/Top 会在代码中被修改，注意 UserControl 的 DataContext 可能是 ViewModel，但 Canvas 里的位置是绝对控制的 -->
+                            <Ellipse Fill="#FF5252" Stroke="White" StrokeThickness="2">
+                                <Ellipse.Effect>
+                                    <DropShadowEffect ShadowDepth="0" Color="Red" BlurRadius="8" />
+                                </Ellipse.Effect>
+                            </Ellipse>
+                        </Grid>
+                    </Canvas>
+                </Canvas>
+
+                <!-- 悬浮指南 -->
+                <StackPanel VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="20" Opacity="0.6"
+                            IsHitTestVisible="False">
+                    <TextBlock Text="🖱️ 右键拖拽移动视角" Foreground="White" FontSize="11" HorizontalAlignment="Right" />
+                    <TextBlock Text="🖱️ 滚轮缩放画布" Foreground="White" FontSize="11" HorizontalAlignment="Right" />
+                    <TextBlock Text="🖱️ 左键拖动图片/红点" Foreground="White" FontSize="11" HorizontalAlignment="Right" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- =================================================================== -->
+        <!-- [右侧] 属性面板 -->
+        <!-- =================================================================== -->
+        <Border Grid.Column="2" Background="{DynamicResource MaterialDesignPaper}"
+                BorderBrush="{DynamicResource MaterialDesignDivider}" BorderThickness="1,0,0,0">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="20" DataContext="{Binding SelectedAction}"
+                            d:DataContext="{d:DesignInstance Type=oldSkinEditor:UnifiedSkinAction}">
+
+                    <!-- 只有选中动作才显示内容 -->
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Visible" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding}" Value="{x:Null}">
+                                    <Setter Property="Visibility" Value="Hidden" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+
+                    <TextBlock Text="Action Properties" FontSize="20" FontWeight="Bold" Margin="0,0,0,20" />
+
+                    <!-- 动作名称 -->
+                    <Grid Margin="0,0,0,20">
+                        <materialDesign:PackIcon Kind="TagTextOutline" VerticalAlignment="Center" Margin="0,0,10,0"
+                                                 Opacity="0.5" />
+                        <TextBlock Text="{Binding ActionName}" FontSize="16" FontWeight="Bold"
+                                   VerticalAlignment="Center" Margin="25,0,0,0" />
+                    </Grid>
+
+                    <!-- 图片导入 -->
+                    <Button
+                        Command="{Binding DataContext.ImportImageCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        Height="50" Margin="0,0,0,20"
+                        BorderBrush="{DynamicResource PrimaryHueMidBrush}"
+                        Foreground="{DynamicResource PrimaryHueMidBrush}">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="ImagePlus" Margin="0,0,10,0" />
+                            <TextBlock Text="导入/更换 图片 (Import)" FontWeight="Bold" />
+                        </StackPanel>
+                    </Button>
+
+                    <!-- HD 模式开关 -->
+                    <materialDesign:Card Background="#1AFFFFFF" Padding="15" UniformCornerRadius="8" Margin="0,0,0,20"
+                                         materialDesign:ElevationAssist.Elevation="Dp0">
+                        <StackPanel>
+                            <DockPanel LastChildFill="False">
+                                <TextBlock Text="HD 高清模式" FontWeight="Bold" VerticalAlignment="Center" />
+                                <ToggleButton DockPanel.Dock="Right"
+                                              Style="{StaticResource MaterialDesignSwitchToggleButton}"
+                                              IsChecked="{Binding DataContext.IsHDMode, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                              Checked="HDMode_Changed" Unchecked="HDMode_Changed"
+                                              ToolTip="开启后使用原图尺寸" />
+                            </DockPanel>
+                            <TextBlock Text="ON: 原图尺寸 (需 Harmony)&#x0a;OFF: 强制 512x512"
+                                       FontSize="10" Opacity="0.5" Margin="0,5,0,0" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </materialDesign:Card>
+
+                    <!-- Pivot (身体位置) -->
+                    <Expander Header="📍 身体中心 (Pivot)" IsExpanded="True" Margin="0,0,0,10">
+                        <StackPanel Margin="0,10,0,0">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition />
+                                    <ColumnDefinition Width="15" />
+                                    <ColumnDefinition />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBox Text="{Binding PivotX, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+                                         materialDesign:HintAssist.Hint="Pivot X (左右)" />
+
+                                <TextBox Grid.Column="2" Text="{Binding PivotY, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+                                         materialDesign:HintAssist.Hint="Pivot Y (上下)" />
+                            </Grid>
+                            <TextBlock Text="* 绿线为地面，请调整 Y 值使脚底对齐绿线" FontSize="10" Opacity="0.5" Margin="0,5,0,0"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Expander>
+
+                    <!-- Head (头部挂载) -->
+                    <Expander Header="🙆 头部挂载 (Head)" IsExpanded="True">
+                        <StackPanel Margin="0,10,0,0">
+                            <!-- 开关 -->
+                            <CheckBox Content="启用头部挂载点"
+                                      IsChecked="{Binding HeadEnable}"
+                                      Style="{StaticResource MaterialDesignSecondaryCheckBox}"
+                                      Margin="0,0,0,15" />
+
+                            <!-- 参数区 (显隐) -->
+                            <StackPanel Visibility="{Binding HeadEnable, Converter={StaticResource BoolToVis}}">
+                                <Grid Margin="0,0,0,15">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition />
+                                        <ColumnDefinition Width="15" />
+                                        <ColumnDefinition />
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBox Text="{Binding HeadX, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+                                             materialDesign:HintAssist.Hint="Head X" />
+
+                                    <TextBox Grid.Column="2"
+                                             Text="{Binding HeadY, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+                                             materialDesign:HintAssist.Hint="Head Y" />
+                                </Grid>
+
+                                <TextBox Text="{Binding HeadRotation, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+                                         materialDesign:HintAssist.Hint="Rotation (角度)" />
+
+                                <TextBlock Text="* 拖拽画布中的红点可直接调整位置" FontSize="10" Opacity="0.5" Margin="0,5,0,0" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Expander>
+
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</UserControl>

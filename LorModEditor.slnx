@@ -1,5 +1,0 @@
-<Solution>
-    <Project Path="LorModEditor.Core/LorModEditor.Core.csproj" Id="2f5c18c5-ef0a-482d-b4c0-c5ada33d7dd0" />
-    <Project Path="LorModEditor.Plugins.Backup/LorModEditor.Plugins.Backup.csproj" />
-    <Project Path="LorModEditor/LorModEditor.csproj" />
-</Solution>

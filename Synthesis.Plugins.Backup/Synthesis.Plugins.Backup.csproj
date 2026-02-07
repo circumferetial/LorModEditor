@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <!-- 只要写 net10.0-windows 即可，不要带具体的版本号如 7.0 -->
+        <TargetFramework>net10.0-windows</TargetFramework>
+        <Nullable>enable</Nullable>
+        <UseWPF>true</UseWPF>
+        <ImplicitUsings>enable</ImplicitUsings>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Synthesis\Synthesis.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="MaterialDesignThemes" Version="5.3.1-ci1236"/>
+        <PackageReference Include="Prism.DryIoc" Version="9.0.537"/>
+    </ItemGroup>
+
+</Project>

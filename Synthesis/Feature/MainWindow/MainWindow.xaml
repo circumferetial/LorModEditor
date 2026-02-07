@@ -1,0 +1,162 @@
+﻿<Window x:Class="Synthesis.Feature.MainWindow.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:prism="http://prismlibrary.com/" xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:mainWindow="clr-namespace:Synthesis.Feature.MainWindow"
+        mc:Ignorable="d"
+        prism:ViewModelLocator.AutoWireViewModel="True"
+        Title="{Binding Title}" Height="800" Width="1200"
+
+        Background="{DynamicResource MaterialDesignPaper}"
+        TextElement.Foreground="{DynamicResource MaterialDesignBody}" d:DataContext="{d:DesignInstance Type=mainWindow:MainWindowViewModel }">
+
+    <Window.Resources>
+        <!-- 侧边栏按钮样式 (适配 Dark 模式) -->
+        <Style x:Key="SideNavButtonStyle" TargetType="RadioButton">
+            <Setter Property="Height" Value="50" />
+            <Setter Property="Margin" Value="0,0,0,2" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Foreground" Value="#AAAAAA" /> <!-- 默认浅灰色 -->
+            <Setter Property="FontSize" Value="20" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="0">
+                            <Grid>
+                                <!-- 左侧高亮条 -->
+                                <Border x:Name="Indicator" Width="4" HorizontalAlignment="Left"
+                                        Background="Transparent" />
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <!-- 悬停 -->
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#333333" /> <!-- 深色悬停 -->
+                                <Setter Property="Foreground" Value="#FFFFFF" />
+                            </Trigger>
+                            <!-- 选中 -->
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Background" Value="#252526" /> <!-- 深色选中 -->
+                                <Setter Property="Foreground" Value="Orange" /> <!-- 对应你的 PrimaryColor -->
+                                <Setter TargetName="Indicator" Property="Background" Value="Orange" />
+                                <Setter Property="FontWeight" Value="Bold" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="60" /> <!-- 左侧导航栏 -->
+            <ColumnDefinition Width="*" />  <!-- 右侧内容 -->
+        </Grid.ColumnDefinitions>
+
+        <!-- 1. 左侧侧边栏 -->
+        <!-- 背景色改为深灰，边框改为深色 -->
+        <Border Grid.Column="0" Background="#1E1E1E" BorderBrush="#333333" BorderThickness="0,0,1,0">
+            <StackPanel Margin="0,10,0,0">
+                <RadioButton Command="{Binding NavigateCommand}" CommandParameter="CardEditorView"
+                             Style="{StaticResource SideNavButtonStyle}" IsChecked="True" ToolTip="战斗书页">
+                    <TextBlock Text="🎴" />
+                </RadioButton>
+
+                <RadioButton Command="{Binding NavigateCommand}" CommandParameter="PassiveEditorView"
+                             Style="{StaticResource SideNavButtonStyle}" ToolTip="被动能力">
+                    <TextBlock Text="⚡" />
+                </RadioButton>
+
+                <RadioButton Command="{Binding NavigateCommand}" CommandParameter="BookEditorView"
+                             Style="{StaticResource SideNavButtonStyle}" ToolTip="核心书页">
+                    <TextBlock Text="📖" />
+                </RadioButton>
+
+                <RadioButton Command="{Binding NavigateCommand}" CommandParameter="EnemyEditorView"
+                             Style="{StaticResource SideNavButtonStyle}" ToolTip="敌人单位">
+                    <TextBlock Text="👹" />
+                </RadioButton>
+
+                <RadioButton Command="{Binding NavigateCommand}" CommandParameter="StageEditorView"
+                             Style="{StaticResource SideNavButtonStyle}" ToolTip="关卡配置">
+                    <TextBlock Text="🏰" />
+                </RadioButton>
+
+                <RadioButton Command="{Binding NavigateCommand}" CommandParameter="DropBookEditorView"
+                             Style="{StaticResource SideNavButtonStyle}" ToolTip="书籍掉落">
+                    <TextBlock Text="📚" />
+                </RadioButton>
+
+                <RadioButton Command="{Binding NavigateCommand}" CommandParameter="SkinEditorView"
+                             Style="{StaticResource SideNavButtonStyle}" ToolTip="皮肤编辑">
+                    <TextBlock Text="🎨" />
+                </RadioButton>
+
+                <Separator Background="#444" Margin="10,5" /> <!-- 深色分割线 -->
+
+                <RadioButton Command="{Binding NavigateCommand}" CommandParameter="AbilityEditorView"
+                             Style="{StaticResource SideNavButtonStyle}" ToolTip="能力描述">
+                    <TextBlock Text="📝" />
+                </RadioButton>
+
+                <RadioButton Command="{Binding NavigateCommand}" CommandParameter="KeywordEditorView"
+                             Style="{StaticResource SideNavButtonStyle}" ToolTip="关键字">
+                    <TextBlock Text="🔤" />
+                </RadioButton>
+
+                <!-- 底部设置 (用Grid把剩下的空间撑开，或者手动 Margin) -->
+            </StackPanel>
+        </Border>
+
+        <!-- 底部设置按钮 -->
+        <RadioButton Grid.Column="0" VerticalAlignment="Bottom" Height="60"
+                     Command="{Binding NavigateCommand}" CommandParameter="SettingsView"
+                     Style="{StaticResource SideNavButtonStyle}" ToolTip="设置">
+            <TextBlock Text="⚙️" />
+        </RadioButton>
+
+        <!-- 2. 右侧主区域 -->
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" /> <!-- 顶部工具栏 -->
+                <RowDefinition Height="*" />    <!-- 内容 -->
+            </Grid.RowDefinitions>
+
+            <!-- 顶部工具栏 -->
+            <!-- 背景色跟随主题 (MaterialDesignPaper)，底部深色分割线 -->
+            <Border Grid.Row="0" Background="{DynamicResource MaterialDesignPaper}" BorderBrush="#333333"
+                    BorderThickness="0,0,0,1" Padding="10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                        <!-- 按钮可以使用 MaterialDesignRaisedButton 样式使其更显眼 -->
+                        <Button Content="📂 打开项目" Command="{Binding OpenProjectCommand}" Padding="15,6"
+                                Margin="0,0,10,0" Style="{StaticResource MaterialDesignRaisedButton}" />
+                        <Button Content="💾 保存所有" Command="{Binding SaveProjectCommand}" Padding="15,6"
+                                Margin="0,0,10,0" Style="{StaticResource MaterialDesignRaisedButton}" />
+                        <!-- 导出按钮用 Outlined 样式，区分一下 -->
+                        <Button Content="📝 导出文档" Command="{Binding ExportCommand}" Padding="15,6"
+                                Style="{StaticResource MaterialDesignOutlinedButton}" BorderBrush="Cyan"
+                                Foreground="Cyan" />
+                    </StackPanel>
+
+                    <!-- 插件插槽 -->
+                    <ContentControl Grid.Column="2" prism:RegionManager.RegionName="ToolbarRegion" />
+                </Grid>
+            </Border>
+
+            <!-- 内容显示区 -->
+            <ContentControl Grid.Row="1" prism:RegionManager.RegionName="ContentRegion" Margin="0" />
+        </Grid>
+    </Grid>
+</Window>

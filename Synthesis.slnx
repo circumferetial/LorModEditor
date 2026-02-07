@@ -1,0 +1,4 @@
+<Solution>
+    <Project Path="Synthesis.Plugins.Backup/Synthesis.Plugins.Backup.csproj"/>
+    <Project Path="Synthesis/Synthesis.csproj"/>
+</Solution>

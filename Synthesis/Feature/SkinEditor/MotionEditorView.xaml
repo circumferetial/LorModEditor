@@ -1,0 +1,93 @@
+<UserControl x:Class="Synthesis.Feature.SkinEditor.MotionEditorView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:tools="clr-namespace:Synthesis.Core.Tools"
+             xmlns:skinEditor="clr-namespace:Synthesis.Feature.SkinEditor"
+             mc:Ignorable="d" 
+             d:DataContext="{d:DesignInstance Type=skinEditor:MotionEditorViewModel, IsDesignTimeCreatable=False}"
+             d:DesignHeight="600" d:DesignWidth="1000">
+
+    <UserControl.Resources>
+        <!-- 转换器：请确保你的 Synthesis.Core.Tools 命名空间里有这些类 -->
+        <tools:HalfConverter x:Key="HalfConverter" />
+        <tools:NegativeHalfConverter x:Key="NegativeHalfConverter" />
+        <tools:InvertDoubleConverter x:Key="InvertDoubleConverter" />
+    </UserControl.Resources>
+
+    <Grid Background="#2D2D30">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="200" /> <!-- 1. 皮肤列表 -->
+            <ColumnDefinition Width="150" /> <!-- 2. 动作列表 -->
+            <ColumnDefinition Width="*" />   <!-- 3. 预览画布 -->
+            <ColumnDefinition Width="250" /> <!-- 4. 属性面板 -->
+        </Grid.ColumnDefinitions>
+
+        <!-- 1. 皮肤选择列表 -->
+        <Border Grid.Column="0" BorderBrush="#3E3E42" BorderThickness="0,0,1,0">
+            <DockPanel>
+                <TextBlock Text="皮肤列表" DockPanel.Dock="Top" Foreground="White" Margin="10"/>
+                <ListBox ItemsSource="{Binding Skins}" SelectedItem="{Binding SelectedSkin}" 
+                         Background="Transparent" BorderThickness="0">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding DisplayName}" Foreground="#CCCCCC" Padding="5"/>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+        </Border>
+
+        <!-- 2. 动作选择列表 -->
+        <Border Grid.Column="1" BorderBrush="#3E3E42" BorderThickness="0,0,1,0">
+            <DockPanel>
+                <TextBlock Text="动作" DockPanel.Dock="Top" Foreground="White" Margin="10"/>
+                <ListBox ItemsSource="{Binding MotionList}" SelectedItem="{Binding CurrentMotion}"
+                         Background="Transparent" BorderThickness="0">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding MotionName}" Foreground="#CCCCCC" Padding="5"/>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+        </Border>
+
+        <!-- 临时替换掉原本复杂的 Canvas 区域 -->
+        <Border Grid.Column="2" Background="Gray"> 
+            <Image Source="{Binding PreviewImage}" Stretch="None" VerticalAlignment="Center" HorizontalAlignment="Center" />
+        </Border>
+
+        <!-- 4. 右侧：属性面板 -->
+        <StackPanel Grid.Column="3" Margin="10" Background="#252526">
+            <TextBlock Text="编辑属性" Foreground="White" FontSize="16" Margin="0,0,0,10"/>
+            
+            <!-- 如果没有选中动作，隐藏面板 (可选) -->
+            <StackPanel IsEnabled="{Binding CurrentMotion, Converter={StaticResource IsNullConverter}, ConverterParameter=inverse}">
+                
+                <TextBlock Text="清晰度 (Quality)" Foreground="#AAAAAA" Margin="0,10,0,0"/>
+                <!-- 绑定 CurrentMotion.Quality -->
+                <TextBox Text="{Binding CurrentMotion.Quality, UpdateSourceTrigger=PropertyChanged}" Margin="0,5"/>
+                <Slider Minimum="1" Maximum="200" Value="{Binding CurrentMotion.Quality}" />
+
+                <TextBlock Text="垂直偏移 (Y Offset)" Foreground="#AAAAAA" Margin="0,10,0,0"/>
+                <!-- 绑定 VisualOffsetY -->
+                <TextBox Text="{Binding VisualOffsetY, StringFormat=N2, UpdateSourceTrigger=PropertyChanged}" Margin="0,5"/>
+                <Slider Minimum="-300" Maximum="300" Value="{Binding VisualOffsetY}" />
+                
+                <TextBlock Text="水平偏移 (X Offset)" Foreground="#AAAAAA" Margin="0,10,0,0"/>
+                <TextBox Text="{Binding VisualOffsetX, StringFormat=N2, UpdateSourceTrigger=PropertyChanged}" Margin="0,5"/>
+                <Slider Minimum="-300" Maximum="300" Value="{Binding VisualOffsetX}" />
+
+                <Separator Margin="0,20"/>
+                
+                <!-- 调试信息：XML 真实值 -->
+                <!-- 修复了之前的 Source 绑定错误，现在直接通过 Path 访问 CurrentMotion -->
+                <TextBlock Text="[XML 原始数据]" Foreground="Gray" FontWeight="Bold"/>
+                <TextBlock Text="{Binding CurrentMotion.SizeY, StringFormat='Size H: {0}'}" Foreground="Gray"/>
+                <TextBlock Text="{Binding CurrentMotion.PivotY, StringFormat='Pivot Y: {0:N2}'}" Foreground="Gray"/>
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</UserControl>

@@ -1,0 +1,445 @@
+<UserControl x:Class="Synthesis.Feature.Card.CardEditorView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+
+             xmlns:prism="http://prismlibrary.com/"
+
+             xmlns:components="clr-namespace:Synthesis.Views.Components"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:card="clr-namespace:Synthesis.Feature.Card"
+             xmlns:core="clr-namespace:Synthesis.Core"
+
+
+             mc:Ignorable="d"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             d:DataContext="{d:DesignInstance Type=card:CardEditorViewModel, IsDesignTimeCreatable=False}"
+
+             d:DesignHeight="900" d:DesignWidth="1100"
+             TextElement.Foreground="{DynamicResource MaterialDesignBody}">
+
+    <UserControl.Resources>
+        <!-- 
+       标签样式优化：
+       1. Background 改为半透明深色 (#30FFFFFF)，比纯灰更有质感。
+       2. BorderBrush 使用主题主色 (PrimaryHueMidBrush)，让它看起来像激活的词条。
+       3. 字体加粗。
+    -->
+
+        <!-- 特性 (Options) 标签模板 -->
+        <DataTemplate x:Key="ChipItemTemplate">
+            <Border Background="#1AFFFFFF"
+                    BorderBrush="{DynamicResource PrimaryHueMidBrush}"
+                    BorderThickness="1"
+                    CornerRadius="12"
+                    Padding="10,4,4,4" Margin="0,0,6,6">
+                <StackPanel Orientation="Horizontal">
+                    <!-- 文字颜色跟随边框，或者用亮白 -->
+                    <TextBlock Text="{Binding}" VerticalAlignment="Center"
+                               Foreground="{DynamicResource PrimaryHueMidBrush}"
+                               Margin="0,0,6,0" FontWeight="Bold" FontSize="12" />
+
+                    <!-- 删除小按钮 -->
+                    <Button Style="{StaticResource MaterialDesignToolButton}"
+                            Command="{Binding DataContext.RemoveOptionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            CommandParameter="{Binding}"
+                            Height="20" Width="20" Padding="0">
+                        <materialDesign:PackIcon Kind="CloseCircle" Width="16" Height="16"
+                                                 Foreground="{DynamicResource PrimaryHueMidBrush}" Opacity="0.7" />
+                    </Button>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
+        <!-- 关键词 (Keywords) 标签模板 - 使用不同的颜色 (例如青色 Cyan) 以示区分 -->
+        <DataTemplate x:Key="KeywordItemTemplate">
+            <Border Background="#1AFFFFFF"
+                    BorderBrush="Cyan"
+                    BorderThickness="1"
+                    CornerRadius="12"
+                    Padding="10,4,4,4" Margin="0,0,6,6">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding}" VerticalAlignment="Center"
+                               Foreground="Cyan"
+                               Margin="0,0,6,0" FontWeight="Bold" FontSize="12" />
+
+                    <Button Style="{StaticResource MaterialDesignToolButton}"
+                            Command="{Binding DataContext.RemoveKeywordCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            CommandParameter="{Binding}"
+                            Height="20" Width="20" Padding="0">
+                        <materialDesign:PackIcon Kind="CloseCircle" Width="16" Height="16"
+                                                 Foreground="Cyan" Opacity="0.7" />
+                    </Button>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <UserControl.InputBindings>
+        <KeyBinding Key="N" Modifiers="Control" Command="{Binding CreateCommand}" />
+    </UserControl.InputBindings>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="280" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- 1. 工具栏 -->
+        <Border Grid.Row="0" Grid.ColumnSpan="2"
+                Background="{DynamicResource MaterialDesignPaper}"
+                BorderBrush="{DynamicResource MaterialDesignDivider}"
+                BorderThickness="0,0,0,1" Padding="8,4">
+            <StackPanel Orientation="Horizontal">
+                <Button Content="➕ 新建卡牌" Command="{Binding CreateCommand}"
+                        IsEnabled="{Binding Manager.CardRepo.HasData}"
+                        Style="{StaticResource MaterialDesignRaisedButton}"
+                        Margin="0,0,8,0" Padding="10,5" />
+
+                <!-- 复制按钮：使用金黄色高亮，区分于新建(蓝)和删除(红) -->
+                <Button Content="📄 复制" Command="{Binding DuplicateCommand}"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        Margin="0,0,8,0" Padding="10,5"
+                        Foreground="#FFCA28" BorderBrush="#FFCA28"
+                        ToolTip="复制当前选中的卡牌" />
+
+                <Button Content="🗑️ 删除" Command="{Binding DeleteCommand}"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        Foreground="#FF5252" BorderBrush="#FF5252"
+                        Margin="0,0,8,0" Padding="10,5" />
+            </StackPanel>
+        </Border>
+
+        <!-- 2. 左侧列表 -->
+        <DockPanel Grid.Row="1" Grid.Column="0">
+            <TextBox x:Name="SearchBox" DockPanel.Dock="Top"
+                     Margin="4" Padding="4"
+                     TextChanged="SearchBox_TextChanged"
+                     materialDesign:HintAssist.Hint="搜索 ID 或 名称..."
+                     Style="{StaticResource MaterialDesignOutlinedTextBox}" />
+
+            <ListBox x:Name="CardListBox"
+                     VirtualizingStackPanel.IsVirtualizing="True"
+                     VirtualizingStackPanel.VirtualizationMode="Recycling"
+                     ItemsSource="{Binding Manager.CardRepo.Items}"
+                     SelectedItem="{Binding SelectedCard}"
+                     DisplayMemberPath="DisplayName"
+                     SelectionChanged="CardListBox_SelectionChanged"
+                     BorderThickness="0,1,1,0"
+                     BorderBrush="{DynamicResource MaterialDesignDivider}" />
+        </DockPanel>
+
+        <!-- 3. 右侧编辑区 -->
+        <ScrollViewer Grid.Row="1" Grid.Column="1" VerticalScrollBarVisibility="Auto">
+
+            <StackPanel x:Name="EditPanel" Margin="20" DataContext="{Binding SelectedCard}">
+                <StackPanel.Style>
+                    <Style TargetType="StackPanel">
+                        <Setter Property="Visibility" Value="Visible" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding}" Value="{x:Null}">
+                                <Setter Property="Visibility" Value="Hidden" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding IsVanilla}" Value="True">
+                                <Setter Property="IsEnabled" Value="False" />
+                                <Setter Property="Opacity" Value="0.6" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Style>
+
+                <TextBlock Text="卡牌属性 (Battle Page)" FontSize="22" FontWeight="Bold" Margin="0,0,0,20" />
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" /> <!-- 图片预览 -->
+                        <ColumnDefinition Width="*" />    <!-- 基础信息 -->
+                    </Grid.ColumnDefinitions>
+
+                    <!-- 左侧：图片预览 -->
+                    <StackPanel Grid.Column="0" Margin="0,0,20,0" VerticalAlignment="Top">
+                        <!-- 使用之前的 ImageSelector -->
+                        <components:ImageSelector
+                            LabelText="Artwork"
+                            SelectedImageName="{Binding ArtworkName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                            ImageList="{Binding DataContext.Manager.Artworks, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            Manager="{Binding DataContext.Manager, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            PreviewWidth="200" PreviewHeight="140" />
+
+                        <!-- Rarity 放在图片下面比较好看 -->
+                        <ComboBox ItemsSource="{x:Static core:GlobalValues.Rarities}"
+                                  SelectedItem="{Binding Rarity, UpdateSourceTrigger=PropertyChanged}"
+                                  Style="{StaticResource MaterialDesignFloatingHintComboBox}"
+                                  materialDesign:HintAssist.Hint="Rarity (稀有度)"
+                                  Margin="0,15,0,0" />
+                    </StackPanel>
+
+                    <!-- 右侧：基础数值 -->
+                    <StackPanel Grid.Column="1">
+                        <!-- 第一行：ID & Name -->
+                        <Grid Margin="0,0,0,15">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="120" />
+                                <ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0" Text="{Binding Id, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+                                     materialDesign:HintAssist.Hint="ID" />
+
+                            <TextBox Grid.Column="2" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+                                     materialDesign:HintAssist.Hint="Name (名称)" />
+                        </Grid>
+
+                        <!-- 第二行：数值 -->
+                        <Grid Margin="0,0,0,15">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" /><ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="*" /><ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="*" /><ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBox Grid.Column="0" Text="{Binding Cost, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+                                     materialDesign:HintAssist.Hint="Cost (费用)" />
+
+                            <ComboBox Grid.Column="2" ItemsSource="{x:Static core:GlobalValues.Ranges}"
+                                      SelectedItem="{Binding Range, UpdateSourceTrigger=PropertyChanged}"
+                                      Style="{StaticResource MaterialDesignFloatingHintComboBox}"
+                                      materialDesign:HintAssist.Hint="Range (类型)" />
+
+                            <TextBox Grid.Column="4" Text="{Binding Chapter, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+                                     materialDesign:HintAssist.Hint="Chapter (章节)" />
+
+                            <TextBox Grid.Column="6" Text="{Binding Priority, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+                                     materialDesign:HintAssist.Hint="Priority (AI)" />
+                        </Grid>
+
+                        <!-- 第三行：主脚本 -->
+                        <ComboBox IsEditable="True"
+                                  Text="{Binding Script, UpdateSourceTrigger=PropertyChanged}"
+                                  ItemsSource="{Binding DataContext.Manager.ScriptScanner.CardScripts, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                  Style="{StaticResource MaterialDesignFloatingHintComboBox}"
+                                  materialDesign:HintAssist.Hint="Main Script (核心脚本)" />
+                    </StackPanel>
+                </Grid>
+
+                <Separator Background="{DynamicResource MaterialDesignDivider}" Margin="0,20" />
+
+                <!-- 特性与关键词 (Chips 布局) -->
+                <Grid Margin="0,0,0,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="20" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- 特性 (Options) -->
+                    <!-- 特性 (Options) -->
+                    <StackPanel Grid.Column="0">
+                        <Grid Margin="0,0,0,5">
+                            <!-- 修改点：Foreground 改为 MaterialDesignBody (白色/浅灰) -->
+                            <TextBlock Text="🏷️ 特性 (Options)" FontWeight="Bold"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource MaterialDesignBody}" />
+
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <ComboBox Width="120"
+                                          ItemsSource="{x:Static core:GlobalValues.CardOptions}"
+                                          SelectedItem="{Binding DataContext.SelectedOptionToAdd, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                          Style="{StaticResource MaterialDesignComboBox}"
+                                          materialDesign:HintAssist.Hint="选择特性" />
+                                <Button Content="➕"
+                                        Command="{Binding DataContext.AddOptionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                                        Padding="5,0" Margin="5,0,0,0" Height="25" />
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- 引用上面的 ChipItemTemplate -->
+                        <ItemsControl ItemsSource="{Binding OptionList}"
+                                      ItemTemplate="{StaticResource ChipItemTemplate}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </StackPanel>
+
+                    <!-- 关键词 (Keywords) -->
+                    <StackPanel Grid.Column="2">
+                        <Grid Margin="0,0,0,5">
+                            <!-- 修改点：Foreground 改为 MaterialDesignBody (白色/浅灰) -->
+                            <TextBlock Text="🔑 关键词 (Keywords)" FontWeight="Bold"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource MaterialDesignBody}" />
+
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <TextBox Width="100"
+                                         Text="{Binding DataContext.KeywordToAdd, RelativeSource={RelativeSource AncestorType=UserControl}, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource MaterialDesignTextBox}"
+                                         materialDesign:HintAssist.Hint="输入..." />
+                                <Button Content="➕"
+                                        Command="{Binding DataContext.AddKeywordCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                                        Padding="5,0" Margin="5,0,0,0" Height="25" />
+                            </StackPanel>
+                        </Grid>
+
+                        <ItemsControl ItemsSource="{Binding Keywords}"
+                                      ItemTemplate="{StaticResource KeywordItemTemplate}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </StackPanel>
+                </Grid>
+
+                <!-- ==========================
+                     重构后的 骰子配置区 (Card Style)
+                     ========================== -->
+                <TextBlock Text="🎲 骰子配置 (Behaviours)" FontSize="18" FontWeight="Bold" Margin="0,0,0,10" />
+
+                <!-- 底部添加按钮 -->
+                <Button Content="➕ 添加新骰子"
+                        Command="{Binding DataContext.AddDiceCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        HorizontalAlignment="Left" Margin="0,0,0,10" />
+
+                <!-- 使用 ItemsControl 替代 DataGrid -->
+                <!-- 使用 ItemsControl 替代 DataGrid -->
+                <ItemsControl ItemsSource="{Binding Behaviours}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type card:UnifiedBehaviour}">
+                            <!-- 每一个骰子是一个卡片 -->
+                            <materialDesign:Card Margin="0,0,0,15" Padding="10" UniformCornerRadius="6"
+                                                 Background="{DynamicResource MaterialDesignPaper}">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" /> <!-- Row 1: 核心数值 -->
+                                        <RowDefinition Height="Auto" /> <!-- Row 2: 脚本与特效 -->
+                                        <RowDefinition Height="Auto" /> <!-- Row 3: 描述 -->
+                                    </Grid.RowDefinitions>
+
+                                    <!-- Row 1: 核心数值 (Min-Max, Type, Detail, Motion) -->
+                                    <Grid Grid.Row="0" Margin="0,0,0,10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" /> <!-- Delete Btn -->
+                                            <ColumnDefinition Width="Auto" /> <!-- Min -->
+                                            <ColumnDefinition Width="Auto" /> <!-- - -->
+                                            <ColumnDefinition Width="Auto" /> <!-- Max -->
+                                            <ColumnDefinition Width="20" />
+                                            <ColumnDefinition Width="*" />   <!-- Type -->
+                                            <ColumnDefinition Width="10" />
+                                            <ColumnDefinition Width="*" />   <!-- Detail -->
+                                            <ColumnDefinition Width="10" />
+                                            <ColumnDefinition Width="*" />   <!-- Motion -->
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- 【关键修复】删除当前骰子 -->
+                                        <!-- 原来的写法 (可能找不到 Root):
+     Command="{Binding DataContext.RemoveDiceCommand, ElementName=Root}"
+-->
+
+                                        <!-- ✅ 推荐的写法 (自动向上寻找 UserControl): -->
+                                        <Button Grid.Column="0"
+                                                Command="{Binding DataContext.RemoveDiceCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}"
+                                                Style="{StaticResource MaterialDesignToolButton}"
+                                                Foreground="Gray" Margin="0,0,10,0" ToolTip="删除此骰子">
+                                            <materialDesign:PackIcon Kind="Close" />
+                                        </Button>
+
+                                        <!-- 骰子点数 (大字体) -->
+                                        <TextBox Grid.Column="1"
+                                                 Text="{Binding Min, UpdateSourceTrigger=PropertyChanged}"
+                                                 FontSize="20" FontWeight="Bold" Width="40"
+                                                 HorizontalContentAlignment="Center"
+                                                 Style="{StaticResource MaterialDesignTextBox}"
+                                                 materialDesign:HintAssist.Hint="Min" />
+
+                                        <TextBlock Grid.Column="2" Text="~" VerticalAlignment="Center" FontSize="20"
+                                                   Foreground="Gray" Margin="5,0" />
+
+                                        <TextBox Grid.Column="3"
+                                                 Text="{Binding Dice, UpdateSourceTrigger=PropertyChanged}"
+                                                 FontSize="20" FontWeight="Bold" Width="40"
+                                                 HorizontalContentAlignment="Center"
+                                                 Style="{StaticResource MaterialDesignTextBox}"
+                                                 materialDesign:HintAssist.Hint="Max" />
+
+                                        <!-- 类型选择 -->
+                                        <ComboBox Grid.Column="5" ItemsSource="{x:Static core:GlobalValues.DiceTypes}"
+                                                  SelectedItem="{Binding Type, UpdateSourceTrigger=PropertyChanged}"
+                                                  Style="{StaticResource MaterialDesignFloatingHintComboBox}"
+                                                  materialDesign:HintAssist.Hint="Type (类型)" />
+
+                                        <ComboBox Grid.Column="7"
+                                                  ItemsSource="{x:Static core:GlobalValues.DiceDetails}"
+                                                  SelectedItem="{Binding Detail, UpdateSourceTrigger=PropertyChanged}"
+                                                  Style="{StaticResource MaterialDesignFloatingHintComboBox}"
+                                                  materialDesign:HintAssist.Hint="Detail (属性)" />
+
+                                        <ComboBox Grid.Column="9"
+                                                  ItemsSource="{x:Static core:GlobalValues.DiceMotions}"
+                                                  SelectedItem="{Binding Motion, UpdateSourceTrigger=PropertyChanged}"
+                                                  Style="{StaticResource MaterialDesignFloatingHintComboBox}"
+                                                  materialDesign:HintAssist.Hint="Motion (动作)" />
+                                    </Grid>
+
+                                    <!-- Row 2: 逻辑 (Script, Action, VFX) -->
+                                    <Grid Grid.Row="1" Margin="40,0,0,10"> <!-- Indent slightly -->
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="2*" />
+                                            <ColumnDefinition Width="10" />
+                                            <ColumnDefinition Width="1.5*" />
+                                            <ColumnDefinition Width="10" />
+                                            <ColumnDefinition Width="1*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <ComboBox Grid.Column="0" IsEditable="True"
+                                                  Text="{Binding Script, UpdateSourceTrigger=PropertyChanged}"
+                                                  ItemsSource="{Binding DataContext.Manager.ScriptScanner.DiceScripts, ElementName=Root}"
+                                                  Style="{StaticResource MaterialDesignFloatingHintComboBox}"
+                                                  materialDesign:HintAssist.Hint="Dice Script (骰子脚本)" />
+
+                                        <TextBox Grid.Column="2"
+                                                 Text="{Binding ActionScript, UpdateSourceTrigger=PropertyChanged}"
+                                                 Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+                                                 materialDesign:HintAssist.Hint="Action Script (特殊动作)" />
+
+                                        <TextBox Grid.Column="4"
+                                                 Text="{Binding EffectRes, UpdateSourceTrigger=PropertyChanged}"
+                                                 Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+                                                 materialDesign:HintAssist.Hint="VFX (特效)" />
+                                    </Grid>
+
+                                    <!-- Row 3: 描述 -->
+                                    <TextBox Grid.Row="2" Margin="40,0,0,0"
+                                             Text="{Binding Desc, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+                                             materialDesign:HintAssist.Hint="Description (骰子描述, 可选)"
+                                             AcceptsReturn="True" />
+                                </Grid>
+                            </materialDesign:Card>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <TextBlock Height="60" />
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

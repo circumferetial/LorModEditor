@@ -1,8 +1,0 @@
-﻿<prism:PrismApplication x:Class="LorModEditor.App"
-                        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                        xmlns:prism="http://prismlibrary.com/">
-    <Application.Resources>
-        <!-- 这里放你的全局资源，比如 BooleanToVisibilityConverter -->
-    </Application.Resources>
-</prism:PrismApplication>

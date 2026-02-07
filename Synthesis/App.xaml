@@ -1,0 +1,33 @@
+﻿<prism:PrismApplication x:Class="Synthesis.App"
+                        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                        xmlns:prism="http://prismlibrary.com/"
+                        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes">
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+
+                <!-- 1. 配置主题颜色 (使用 BundledTheme) -->
+                <!-- BaseTheme: 亮色/暗色 (Light/Dark) -->
+                <!-- PrimaryColor: 主色调 (对应 LoR 风格，建议选 Red) -->
+                <!-- SecondaryColor: 辅助色 (Lime 是默认，你可以改) -->
+                <!-- VS Code / Rider 风格配色 -->
+                <materialDesign:BundledTheme BaseTheme="Dark"
+                                             PrimaryColor="Orange"
+                                             SecondaryColor="Amber" />
+                <!-- 2. 引入控件默认样式 (注意文件名里的 '2') -->
+                <!-- 旧版本: MaterialDesignTheme.Defaults.xaml (报错原因) -->
+                <!-- 新版本: MaterialDesign2.Defaults.xaml (正确写法) -->
+                <ResourceDictionary
+                    Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign2.Defaults.xaml" />
+
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- 3. 保留你的自定义转换器 -->
+            <BooleanToVisibilityConverter x:Key="BoolToVis" />
+            <BooleanToVisibilityConverter x:Key="IsNullConverter" />
+            <Style x:Key="MaterialDesignOutlinedListBox" TargetType="ListBox" />
+        </ResourceDictionary>
+    </Application.Resources>
+</prism:PrismApplication>

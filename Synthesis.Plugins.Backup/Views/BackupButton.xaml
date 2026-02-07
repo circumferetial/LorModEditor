@@ -1,0 +1,17 @@
+<UserControl x:Class="Synthesis.Plugins.Backup.Views.BackupButton"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:prism="http://prismlibrary.com/"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:viewModels="clr-namespace:Synthesis.Plugins.Backup.ViewModels"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=viewModels:BackupButtonViewModel, IsDesignTimeCreatable=False}">
+
+    <Button Command="{Binding BackupCommand}"
+            Content="📦 备份"
+            Padding="10,5" Margin="5,0,0,0"
+            Background="#FFF0F5" BorderBrush="#FF69B4" FontWeight="Bold"
+            ToolTip="一键备份当前 Mod 到 Backups 文件夹" />
+</UserControl>

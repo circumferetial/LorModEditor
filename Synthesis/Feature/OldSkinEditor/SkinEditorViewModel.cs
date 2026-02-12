@@ -32,7 +32,6 @@ public class SkinEditorViewModel : BindableBase
             .ObservesProperty(() => SelectedItem);
 
         // 音效命令
-
     }
 
     // =========================================================

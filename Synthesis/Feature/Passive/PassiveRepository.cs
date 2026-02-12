@@ -24,6 +24,21 @@ public class PassiveRepository : BaseRepository<UnifiedPassive>
 
     public override void Load()
     {
+        // 1. 构建 ID → 本地化节点 的映射（合并所有本地化文档）
+        var locMap = new Dictionary<string, XElement>();
+        foreach (var loc in _locDocs.Where(d => d.Root?.Name.LocalName == "PassiveDescRoot"))
+        {
+            var nodes = loc.Root?.Elements("PassiveDesc");
+            if (nodes == null) continue;
+            foreach (var descNode in nodes)// ← 改用 Elements
+            {
+                var id = descNode.Attribute("ID")?.Value;
+                if (!string.IsNullOrEmpty(id))
+                    locMap.TryAdd(id, descNode);
+            }
+        }
+
+        // 2. 遍历数据文档，通过字典快速获取本地化节点
         var modParent = GetTargetLocDoc("PassiveDescRoot")?.Root;
         foreach (var doc in _dataDocs)
         {
@@ -32,12 +47,8 @@ public class PassiveRepository : BaseRepository<UnifiedPassive>
             {
                 var id = node.Attribute("ID")?.Value ?? "";
                 if (string.IsNullOrEmpty(id)) continue;
-                XElement? foundText = null;
-                foreach (var loc in _locDocs.Where(d => d.Root?.Name.LocalName == "PassiveDescRoot"))
-                {
-                    foundText = loc.Descendants("PassiveDesc").FirstOrDefault(x => x.Attribute("ID")?.Value == id);
-                    if (foundText != null) break;
-                }
+
+                locMap.TryGetValue(id, out var foundText);   // O(1) 查找
                 Items.Add(new UnifiedPassive(node, foundText, modParent));
             }
         }

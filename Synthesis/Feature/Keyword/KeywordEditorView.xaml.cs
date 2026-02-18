@@ -1,57 +1,71 @@
-using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Threading;
+using Synthesis.Core.Tools;
 
 namespace Synthesis.Feature.Keyword;
 
-public partial class KeywordEditorView : IRegionMemberLifetime
+public partial class KeywordEditorView : UserControl, IRegionMemberLifetime
 {
+    private readonly DispatcherTimer _searchTimer = new()
+    {
+        Interval = TimeSpan.FromMilliseconds(400)
+    };
+
     public KeywordEditorView()
     {
         InitializeComponent();
         Loaded += (_, _) => ApplySorting();
+        _searchTimer.Tick += (_, _) =>
+        {
+            _searchTimer.Stop();
+            ApplyFilter();
+        };
     }
 
     public bool KeepAlive => true;
 
     private void ApplySorting()
     {
-        if (KeywordListBox.ItemsSource == null) return;
+        if (KeywordListBox.ItemsSource != null)
+        {
+            ViewSortHelper.ApplyModFirstNaturalSort<UnifiedKeyword>(KeywordListBox.ItemsSource, x => x.Id);
+        }
+    }
+
+    private void ApplyFilter()
+    {
+        if (KeywordListBox.ItemsSource == null)
+        {
+            return;
+        }
 
         var view = CollectionViewSource.GetDefaultView(KeywordListBox.ItemsSource);
-        if (view != null)
+        if (view == null)
         {
-            view.SortDescriptions.Clear();
-            view.SortDescriptions.Add(new SortDescription("IsVanilla", ListSortDirection.Ascending));
-            view.SortDescriptions.Add(new SortDescription("Id", ListSortDirection.Ascending));
-            view.Refresh();
+            return;
         }
+
+        var filterText = SearchBox.Text;
+        view.Filter = obj =>
+        {
+            if (string.IsNullOrEmpty(filterText))
+            {
+                return true;
+            }
+
+            return obj is UnifiedKeyword keyword &&
+                   (keyword.Id.Contains(filterText, StringComparison.OrdinalIgnoreCase) ||
+                    keyword.Name.Contains(filterText, StringComparison.OrdinalIgnoreCase) ||
+                    keyword.Desc.Contains(filterText, StringComparison.OrdinalIgnoreCase));
+        };
     }
 
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
     {
-        var textBox = sender as TextBox;
-        var filterText = textBox?.Text ?? "";
-
-        var view = CollectionViewSource.GetDefaultView(KeywordListBox.ItemsSource);
-        if (view != null)
-        {
-            view.Filter = obj =>
-            {
-                if (string.IsNullOrEmpty(filterText)) return true;
-
-                // 【核心修正】这里是 UnifiedKeyword
-                if (obj is UnifiedKeyword item)
-                {
-                    // 搜索 ID, Name 和 Desc
-                    return item.Id.Contains(filterText, StringComparison.OrdinalIgnoreCase) ||
-                           item.Name.Contains(filterText, StringComparison.OrdinalIgnoreCase) ||
-                           item.Desc.Contains(filterText, StringComparison.OrdinalIgnoreCase);
-                }
-                return false;
-            };
-        }
+        _searchTimer.Stop();
+        _searchTimer.Start();
     }
 
     private void KeywordListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)

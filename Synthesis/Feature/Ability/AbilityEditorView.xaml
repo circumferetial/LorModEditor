@@ -1,120 +1,138 @@
-<UserControl x:Class="Synthesis.Feature.Ability.AbilityEditorView"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
-             xmlns:ability="clr-namespace:Synthesis.Feature.Ability"
-
-             mc:Ignorable="d"
-             d:DataContext="{d:DesignInstance Type=ability:AbilityEditorViewModel, IsDesignTimeCreatable=False}"
-             d:DesignHeight="500" d:DesignWidth="800"
-             TextElement.Foreground="{DynamicResource MaterialDesignBody}">
-
-    <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="220" /> <!-- 左栏稍微变窄 -->
-            <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
-
-        <!-- 工具栏 (紧凑版) -->
-        <Border Grid.Row="0" Grid.ColumnSpan="2"
-                Background="{DynamicResource MaterialDesignPaper}"
-                BorderBrush="{DynamicResource MaterialDesignDivider}"
-                BorderThickness="0,0,0,1" Padding="8,4"> <!-- 减小 Padding -->
-
-            <StackPanel Orientation="Horizontal">
-                <!-- 新建按钮 -->
-                <Button Content="➕ 新建词条" Command="{Binding CreateCommand}"
-                        Padding="10,5" Margin="0,0,5,0" FontWeight="Bold"
-                        IsEnabled="{Binding Manager.AbilityRepo.HasLoc}"
-                        Style="{StaticResource MaterialDesignRaisedButton}"> <!-- 使用默认Raised样式 -->
-                    <Button.Resources>
-                        <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignRaisedButton}">
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding Manager.AbilityRepo.HasLoc}" Value="False">
-                                    <Setter Property="ToolTip" Value="[不可用] 未找到可写入的翻译文件" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Button.Resources>
-                </Button>
-
-                <!-- 删除按钮 (使用 Outlined 样式，红色) -->
-                <Button Content="🗑️ 删除词条" Command="{Binding DeleteCommand}"
-                        Padding="10,5" Margin="0,0,5,0"
-                        Style="{StaticResource MaterialDesignOutlinedButton}"
-                        Foreground="Yellow" BorderBrush="Yellow" />
-
-                <!-- 亮点功能 (使用 Outlined 样式，青色) -->
-                <Button Content="🔍 扫描缺失" Command="{Binding ScanMissingCommand}"
-                        Padding="10,5" FontWeight="Bold"
-                        Style="{StaticResource MaterialDesignOutlinedButton}"
-                        Foreground="Cyan" BorderBrush="Cyan" />
-
-            </StackPanel>
-        </Border>
-
-        <!-- 左侧列表 -->
-        <DockPanel Grid.Row="1" Grid.Column="0">
-            <!-- 搜索框紧贴顶部 -->
-            <TextBox x:Name="SearchBox" DockPanel.Dock="Top"
-                     TextChanged="SearchBox_TextChanged"
-                     Margin="4" Padding="4"
-                     materialDesign:HintAssist.Hint="搜索..."
-                     Style="{StaticResource MaterialDesignOutlinedTextBox}" />
-
-            <ListBox x:Name="AbilityListBox"
-                     ItemsSource="{Binding Manager.AbilityRepo.Items}"
-                     DisplayMemberPath="DisplayName"
-                     SelectedItem="{Binding SelectedItem}"
-                     SelectionChanged="AbilityListBox_SelectionChanged"
-                     BorderThickness="0,1,1,0"
-                     BorderBrush="{DynamicResource MaterialDesignDivider}" />
-        </DockPanel>
-
-        <!-- 右侧编辑区 -->
-        <!-- 这里的 DataContext 切换需要注意 -->
-        <Grid Grid.Row="1" Grid.Column="1">
-            <StackPanel x:Name="EditPanel" Margin="15" Visibility="Hidden"
-                        d:DataContext="{d:DesignInstance Type=ability:UnifiedAbility}">
-
-                <StackPanel.Style>
-                    <Style TargetType="StackPanel">
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding IsVanilla}" Value="True">
-                                <Setter Property="IsEnabled" Value="False" />
-                                <Setter Property="Opacity" Value="0.6" />
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </StackPanel.Style>
-
-                <TextBlock Text="能力描述 (BattleCardAbility)" FontSize="18" FontWeight="Bold" Margin="0,0,0,15" />
-
-                <!-- 使用 FloatingHint 节省空间 -->
-                <TextBox Text="{Binding Id, UpdateSourceTrigger=PropertyChanged}"
-                         materialDesign:HintAssist.Hint="ID (Script Name)"
-                         Style="{StaticResource MaterialDesignFloatingHintTextBox}"
-                         Margin="0,0,0,15" />
-
-                <!-- 描述区 -->
-                <TextBlock Text="Desc (描述):" FontWeight="Bold" Margin="0,5,0,5" />
-                <TextBox Text="{Binding Desc, UpdateSourceTrigger=PropertyChanged}"
-                         Height="200"
-                         AcceptsReturn="True"
-                         TextWrapping="Wrap"
-                         VerticalScrollBarVisibility="Auto"
-                         Padding="5"
-                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                         materialDesign:HintAssist.Hint="输入多行描述..." />
-
-                <TextBlock Text="* 支持 {0} 占位符" FontSize="10" Opacity="0.5" Margin="0,2,0,0" HorizontalAlignment="Right" />
-            </StackPanel>
-        </Grid>
+<controls:UserControl
+  x:Class="Synthesis.Feature.Ability.AbilityEditorView"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+  x:Name="Root"
+  TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+  xmlns:controls="clr-namespace:System.Windows.Controls;assembly=PresentationFramework">
+  <Grid>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition
+        Width="220" />
+      <ColumnDefinition
+        Width="*" />
+    </Grid.ColumnDefinitions>
+    <Grid.RowDefinitions>
+      <RowDefinition
+        Height="Auto" />
+      <RowDefinition
+        Height="*" />
+    </Grid.RowDefinitions>
+    <Border
+      Grid.Row="0"
+      Grid.ColumnSpan="2"
+      Background="{DynamicResource MaterialDesignPaper}"
+      BorderBrush="{DynamicResource MaterialDesignDivider}"
+      BorderThickness="0,0,0,1"
+      Padding="8,4">
+      <StackPanel
+        Orientation="Horizontal">
+        <Button
+          Content="➕ 新建词条"
+          Padding="10,5"
+          Margin="0,0,5,0"
+          FontWeight="Bold"
+          Style="{StaticResource MaterialDesignRaisedButton}"
+          Command="{Binding CreateCommand}"
+          IsEnabled="{Binding Manager.AbilityRepo.HasModLoc}">
+          <FrameworkElement.Resources>
+            <ResourceDictionary />
+          </FrameworkElement.Resources>
+        </Button>
+        <Button
+          Content="🗑️ 删除词条"
+          Padding="10,5"
+          Margin="0,0,5,0"
+          Style="{StaticResource MaterialDesignOutlinedButton}"
+          Foreground="#FFFFFF00"
+          BorderBrush="#FFFFFF00"
+          Command="{Binding DeleteCommand}" />
+        <Button
+          Content="🔍 扫描缺失"
+          Padding="10,5"
+          FontWeight="Bold"
+          Style="{StaticResource MaterialDesignOutlinedButton}"
+          Foreground="#FF00FFFF"
+          BorderBrush="#FF00FFFF"
+          Command="{Binding ScanMissingCommand}" />
+      </StackPanel>
+    </Border>
+    <DockPanel
+      Grid.Row="1"
+      Grid.Column="0">
+      <TextBox
+        x:Name="SearchBox"
+        DockPanel.Dock="Top"
+        Margin="4"
+        Padding="4"
+        materialDesign:HintAssist.Hint="搜索..."
+        Style="{StaticResource MaterialDesignOutlinedTextBox}"
+        TextChanged="SearchBox_TextChanged" />
+      <ListBox
+        x:Name="AbilityListBox"
+        DisplayMemberPath="DisplayName"
+        BorderThickness="0,1,1,0"
+        BorderBrush="{DynamicResource MaterialDesignDivider}"
+        ItemsSource="{Binding Manager.AbilityRepo.Items}"
+        SelectedItem="{Binding SelectedItem}"
+        SelectionChanged="AbilityListBox_SelectionChanged" />
+    </DockPanel>
+    <Grid
+      Row="1"
+      Column="1">
+      <StackPanel
+        x:Name="EditPanel"
+        Margin="15"
+        Visibility="Hidden"
+        DataContext="{Binding SelectedItem}">
+        <FrameworkElement.Style>
+          <Style
+            TargetType="{x:Type StackPanel}">
+            <Style.Triggers>
+              <DataTrigger
+                Value="True"
+                Binding="{Binding IsVanilla}">
+                <Setter
+                  Property="IsEnabled"
+                  Value="False" />
+                <Setter
+                  Property="UIElement.Opacity"
+                  Value="0.6" />
+              </DataTrigger>
+            </Style.Triggers>
+          </Style>
+        </FrameworkElement.Style>
+        <TextBlock
+          Text="能力描述 (BattleCardAbility)"
+          FontSize="18"
+          FontWeight="Bold"
+          Margin="0,0,0,15" />
+        <TextBox
+          materialDesign:HintAssist.Hint="ID (Script Name)"
+          Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+          Margin="0,0,0,15"
+          Text="{Binding Id, UpdateSourceTrigger=PropertyChanged}" />
+        <TextBlock
+          Text="Desc (描述):"
+          FontWeight="Bold"
+          Margin="0,5,0,5" />
+        <TextBox
+          Height="200"
+          AcceptsReturn="True"
+          TextWrapping="Wrap"
+          VerticalScrollBarVisibility="Auto"
+          Padding="5"
+          Style="{StaticResource MaterialDesignOutlinedTextBox}"
+          materialDesign:HintAssist.Hint="输入多行描述..."
+          Text="{Binding Desc, UpdateSourceTrigger=PropertyChanged}" />
+        <TextBlock
+          Text="* 支持 {0} 占位符"
+          FontSize="10"
+          Opacity="0.5"
+          Margin="0,2,0,0"
+          HorizontalAlignment="Right" />
+      </StackPanel>
     </Grid>
-</UserControl>
+  </Grid>
+</controls:UserControl>

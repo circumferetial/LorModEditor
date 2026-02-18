@@ -8,10 +8,10 @@ public enum DiceMotion
     G,
     E,
     F,
-    N,// 基础
+    N,
     J2,
     Z2,
-    H2,// 变种
+    H2,
     S,
     S1,
     S2,

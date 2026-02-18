@@ -9,112 +9,129 @@ public class BookRepository : BaseRepository<UnifiedBook>
 {
     public override void LoadResources(string root, string lang, string modId)
     {
-        ScanAndLoad(Path.Combine(root, @"StaticInfo\EquipPage"), "BookXmlRoot", modId, AddDataDoc);
-        ScanAndLoad(Path.Combine(root, $@"Localize\{lang}\Books"), "BookDescRoot", modId, AddLocDoc);
+        ScanAndLoad(Path.Combine(root, "StaticInfo", "EquipPage"), "BookXmlRoot", modId, AddDataDoc);
+        ScanAndLoad(Path.Combine(root, "Localize", lang, "Books"), "BookDescRoot", modId, AddLocDoc);
+    }
+
+    public override void LoadLocResources(string projectRoot, string language, string modId)
+    {
+        ScanAndLoad(Path.Combine(projectRoot, "Localize", language, "Books"), "BookDescRoot", modId, AddLocDoc);
     }
 
     public override void EnsureDefaults(string root, string lang, string modId)
     {
-        if (!HasData)
-            CreateXmlTemplate(Path.Combine(root, @"StaticInfo\EquipPage\EquipPage.xml"), "BookXmlRoot", modId,
+        if (!HasModData)
+        {
+            CreateXmlTemplate(Path.Combine(root, "StaticInfo", "EquipPage", "EquipPage.xml"), "BookXmlRoot", modId,
                 AddDataDoc);
-
-        if (!HasLoc)
-            CreateXmlTemplate(Path.Combine(root, $@"Localize\{lang}\Books\Books.xml"), "BookDescRoot", modId,
+        }
+        if (!HasModLoc)
+        {
+            CreateXmlTemplate(Path.Combine(root, "Localize", lang, "Books", "Books.xml"), "BookDescRoot", modId,
                 AddLocDoc);
+        }
     }
 
-    public override void Load()
+    public override void Parse(bool containOriginal)
     {
-        // 准备默认的挂载点 (优先找 bookDescList)
-        XElement? modLocParent = null;
-        var modDoc = GetTargetLocDoc("BookDescRoot");
-        if (modDoc != null)
+        Items.Clear();
+        XElement xElement = null;
+        var targetLocDoc = GetTargetLocDoc("BookDescRoot");
+        if (targetLocDoc != null)
         {
-            modLocParent = modDoc.Root?.Element("bookDescList") ?? modDoc.Root;
+            xElement = targetLocDoc.Root?.Element("bookDescList") ?? targetLocDoc.Root;
         }
-
-        foreach (var doc in _dataDocs)
+        IEnumerable<XDocument> source;
+        if (!containOriginal)
         {
-            if (doc.Root?.Name.LocalName != "BookXmlRoot") continue;
-
-            foreach (var node in doc.Root.Elements("Book"))
+            IEnumerable<XDocument> modLocDocs = _modLocDocs;
+            source = modLocDocs;
+        }
+        else
+        {
+            source = _locDocs;
+        }
+        var array = source.Where(d => d.Root?.Name.LocalName == "BookDescRoot").ToArray();
+        var dictionary = new Dictionary<(bool, string), XElement>();
+        var array2 = array;
+        foreach (var obj in array2)
+        {
+            var item = obj.IsVanilla();
+            foreach (var item2 in obj.Descendants("BookDesc"))
             {
-                var id = node.Attribute("ID")?.Value ?? "";
-                if (string.IsNullOrEmpty(id)) continue;
-                var nameId = node.Element("TextId")?.Value.Trim() ?? id;
-
-                XElement? foundText = null;
-                var isVanilla = doc.IsVanilla();
-
-                // 查找翻译
-                var targetLocs = _locDocs.Where(d => d.Root?.Name.LocalName == "BookDescRoot").ToArray();
-                foreach (var loc in targetLocs)
+                var text = item2.Attribute("BookID")?.Value;
+                if (!string.IsNullOrWhiteSpace(text))
                 {
-                    if (loc.IsVanilla() == isVanilla)
-                    {
-                        foundText = loc.Descendants("BookDesc")
-                            .FirstOrDefault(x => x.Attribute("BookID")?.Value == nameId);
-                        if (foundText != null) break;
-                    }
+                    dictionary.TryAdd((item, text.Trim()), item2);
                 }
-                if (foundText == null)
+            }
+        }
+        IEnumerable<XDocument> enumerable;
+        if (!containOriginal)
+        {
+            IEnumerable<XDocument> modLocDocs = _modDataDocs;
+            enumerable = modLocDocs;
+        }
+        else
+        {
+            enumerable = _dataDocs;
+        }
+        foreach (var item3 in enumerable)
+        {
+            if (item3.Root?.Name.LocalName != "BookXmlRoot")
+            {
+                continue;
+            }
+            var flag = item3.IsVanilla();
+            foreach (var item4 in item3.Root.Descendants("Book"))
+            {
+                var text2 = item4.Attribute("ID")?.Value ?? "";
+                if (!string.IsNullOrEmpty(text2))
                 {
-                    foreach (var loc in targetLocs)
+                    var text3 = item4.Element("TextId")?.Value.Trim();
+                    if (string.IsNullOrEmpty(text3))
                     {
-                        if (loc.IsVanilla() != isVanilla)
-                        {
-                            foundText = loc.Descendants("BookDesc")
-                                .FirstOrDefault(x => x.Attribute("BookID")?.Value == nameId);
-                            if (foundText != null) break;
-                        }
+                        text3 = text2;
                     }
+                    if (!dictionary.TryGetValue((flag, text3), out var value))
+                    {
+                        dictionary.TryGetValue((!flag, text3), out value);
+                    }
+                    var textParent = flag ? null : xElement;
+                    Items.Add(new UnifiedBook(item4, value, textParent));
                 }
-
-                var parent = isVanilla ? null : modLocParent;
-                Items.Add(new UnifiedBook(node, foundText, parent));
             }
         }
     }
 
     public void Create()
     {
-        var targetDoc = GetTargetDataDoc("BookXmlRoot");
-        if (targetDoc == null) throw new Exception("未找到可写入的 EquipPage 文件(非原版)");
-
-        var newId = 10000000;
+        var obj = GetTargetDataDoc("BookXmlRoot") ?? throw new Exception("未找到可写入的 EquipPage 文件(非原版)");
+        var num = 10000000;
         if (Items.Any(x => !x.IsVanilla))
-            newId = Items.Where(x => !x.IsVanilla).Max(x => int.TryParse(x.Id, out var i) ? i : 0) + 1;
-        var strId = newId.ToString();
-
-        // 1. 创建数据
-        var node = new XElement("Book", new XAttribute("ID", strId));
-        node.Add(new XElement("TextId", strId));
-        targetDoc.Root?.Add(node);
-
-        // 2. 创建翻译
-        var locDoc = GetTargetLocDoc("BookDescRoot");
-        var parent = locDoc?.Root;
-        XElement? text = null;
-
-        if (parent != null)
         {
-            // 【核心修复】检查 bookDescList 层级
-            var listNode = parent.Element("bookDescList");
-            if (listNode == null)
-            {
-                listNode = new XElement("bookDescList");
-                parent.Add(listNode);
-            }
-            parent = listNode;
-
-            text = new XElement("BookDesc", new XAttribute("BookID", strId));
-            text.Add(new XElement("BookName", "New Book"));
-            parent.Add(text);
+            num = Items.Where(x => !x.IsVanilla).Max(x => int.TryParse(x.Id, out var result) ? result : 0) + 1;
         }
-
-        // 3. 添加到 UI
-        Items.Add(new UnifiedBook(node, text, parent));
+        var text = num.ToString();
+        var xElement = new XElement("Book", new XAttribute("ID", text));
+        xElement.Add(new XElement("TextId", text));
+        obj.Root?.Add(xElement);
+        var xElement2 = GetTargetLocDoc("BookDescRoot")?.Root;
+        XElement xElement3 = null;
+        if (xElement2 != null)
+        {
+            var xElement4 = xElement2.Element("bookDescList");
+            if (xElement4 == null)
+            {
+                xElement4 = new XElement("bookDescList");
+                xElement2.Add(xElement4);
+            }
+            xElement2 = xElement4;
+            xElement3 = new XElement("BookDesc", new XAttribute("BookID", text));
+            xElement3.Add(new XElement("BookName", "New Book"));
+            xElement2.Add(xElement3);
+        }
+        Items.Add(new UnifiedBook(xElement, xElement3, xElement2));
     }
 
     public override void Delete(UnifiedBook item)

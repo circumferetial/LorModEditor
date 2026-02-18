@@ -1,136 +1,163 @@
-<UserControl x:Class="Synthesis.Feature.Keyword.KeywordEditorView"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-
-             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
-             xmlns:keyword="clr-namespace:Synthesis.Feature.Keyword"
-
-             mc:Ignorable="d"
-             d:DataContext="{d:DesignInstance Type=keyword:KeywordEditorViewModel, IsDesignTimeCreatable=False}"
-
-             d:DesignHeight="600" d:DesignWidth="900"
-             TextElement.Foreground="{DynamicResource MaterialDesignBody}">
-
-    <Grid>
+<controls:UserControl
+  x:Class="Synthesis.Feature.Keyword.KeywordEditorView"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+  TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+  xmlns:controls="clr-namespace:System.Windows.Controls;assembly=PresentationFramework">
+  <Grid>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition
+        Width="260" />
+      <ColumnDefinition
+        Width="*" />
+    </Grid.ColumnDefinitions>
+    <Grid.RowDefinitions>
+      <RowDefinition
+        Height="Auto" />
+      <RowDefinition
+        Height="*" />
+    </Grid.RowDefinitions>
+    <Border
+      Grid.Row="0"
+      Grid.ColumnSpan="2"
+      Background="{DynamicResource MaterialDesignPaper}"
+      BorderBrush="{DynamicResource MaterialDesignDivider}"
+      BorderThickness="0,0,0,1"
+      Padding="8,4">
+      <StackPanel
+        Orientation="Horizontal">
+        <Button
+          Content="➕ 新建词条"
+          Style="{StaticResource MaterialDesignRaisedButton}"
+          Margin="0,0,10,0"
+          Padding="12,6"
+          Command="{Binding CreateCommand}"
+          IsEnabled="{Binding Manager.KeywordRepo.HasModLoc}">
+          <FrameworkElement.ToolTip>
+            <ToolTip
+              Content="新建一个关键字" />
+          </FrameworkElement.ToolTip>
+        </Button>
+        <Button
+          Content="🗑️ 删除词条"
+          Style="{StaticResource MaterialDesignOutlinedButton}"
+          Padding="12,6"
+          Margin="0,0,10,0"
+          Foreground="#FF5252"
+          BorderBrush="#FF5252"
+          Command="{Binding DeleteCommand}" />
+      </StackPanel>
+    </Border>
+    <DockPanel
+      Grid.Row="1"
+      Grid.Column="0">
+      <TextBox
+        x:Name="SearchBox"
+        DockPanel.Dock="Top"
+        Margin="4"
+        Padding="4"
+        materialDesign:HintAssist.Hint="搜索 ID, 名称或描述..."
+        Style="{StaticResource MaterialDesignOutlinedTextBox}"
+        TextChanged="SearchBox_TextChanged" />
+      <ListBox
+        x:Name="KeywordListBox"
+        VirtualizingPanel.IsVirtualizing="True"
+        VirtualizingPanel.VirtualizationMode="Recycling"
+        DisplayMemberPath="DisplayName"
+        BorderThickness="0,1,1,0"
+        BorderBrush="{DynamicResource MaterialDesignDivider}"
+        ItemsSource="{Binding Manager.KeywordRepo.Items}"
+        SelectedItem="{Binding SelectedItem}"
+        SelectionChanged="KeywordListBox_SelectionChanged" />
+    </DockPanel>
+    <StackPanel
+      x:Name="EditPanel"
+      Grid.Row="1"
+      Grid.Column="1"
+      Margin="30"
+      DataContext="{Binding SelectedItem}">
+      <FrameworkElement.Style>
+        <Style
+          TargetType="{x:Type StackPanel}">
+          <Setter
+            Property="Visibility"
+            Value="Visible" />
+          <Style.Triggers>
+            <DataTrigger
+              Binding="{Binding}"
+              Value="{x:Null}">
+              <Setter
+                Property="Visibility"
+                Value="Hidden" />
+            </DataTrigger>
+            <DataTrigger
+              Value="True"
+              Binding="{Binding IsVanilla}">
+              <Setter
+                Property="IsEnabled"
+                Value="False" />
+              <Setter
+                Property="UIElement.Opacity"
+                Value="0.6" />
+            </DataTrigger>
+          </Style.Triggers>
+        </Style>
+      </FrameworkElement.Style>
+      <TextBlock
+        Text="关键字编辑 (Keyword / BattleEffectText)"
+        FontSize="22"
+        FontWeight="Bold"
+        Margin="0,0,0,25"
+        Foreground="{DynamicResource MaterialDesignBody}" />
+      <Grid
+        Margin="0,0,0,20">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="260" />
-            <ColumnDefinition Width="*" />
+          <ColumnDefinition
+            Width="*" />
+          <ColumnDefinition
+            Width="20" />
+          <ColumnDefinition
+            Width="*" />
         </Grid.ColumnDefinitions>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
-
-        <!-- 1. 工具栏 -->
-        <Border Grid.Row="0" Grid.ColumnSpan="2"
-                Background="{DynamicResource MaterialDesignPaper}"
-                BorderBrush="{DynamicResource MaterialDesignDivider}"
-                BorderThickness="0,0,0,1" Padding="8,4">
-
-            <StackPanel Orientation="Horizontal">
-                <!-- 新建按钮 -->
-                <Button Content="➕ 新建词条" Command="{Binding CreateCommand}"
-                        IsEnabled="{Binding Manager.KeywordRepo.HasLoc}"
-                        Style="{StaticResource MaterialDesignRaisedButton}"
-                        Margin="0,0,10,0" Padding="12,6">
-                    <Button.ToolTip>
-                        <ToolTip Content="新建一个关键字" />
-                    </Button.ToolTip>
-                </Button>
-
-                <!-- 删除按钮 (红色高亮) -->
-                <Button Content="🗑️ 删除词条" Command="{Binding DeleteCommand}"
-                        Style="{StaticResource MaterialDesignOutlinedButton}"
-                        Padding="12,6" Margin="0,0,10,0"
-                        Foreground="#FF5252" BorderBrush="#FF5252" />
-            </StackPanel>
-        </Border>
-
-        <!-- 2. 左侧列表 -->
-        <DockPanel Grid.Row="1" Grid.Column="0">
-            <!-- 搜索框 -->
-            <TextBox x:Name="SearchBox" DockPanel.Dock="Top"
-                     TextChanged="SearchBox_TextChanged"
-                     Margin="4" Padding="4"
-                     materialDesign:HintAssist.Hint="搜索 ID, 名称或描述..."
-                     Style="{StaticResource MaterialDesignOutlinedTextBox}" />
-
-            <ListBox x:Name="KeywordListBox"
-                     VirtualizingStackPanel.IsVirtualizing="True"
-                     VirtualizingStackPanel.VirtualizationMode="Recycling"
-                     ItemsSource="{Binding Manager.KeywordRepo.Items}"
-                     SelectedItem="{Binding SelectedItem}"
-                     DisplayMemberPath="DisplayName"
-                     SelectionChanged="KeywordListBox_SelectionChanged"
-                     BorderThickness="0,1,1,0"
-                     BorderBrush="{DynamicResource MaterialDesignDivider}" />
-        </DockPanel>
-
-        <!-- 3. 右侧编辑区 -->
-        <!-- 绑定 SelectedItem 作为 DataContext，这样内部直接写属性名即可 -->
-        <StackPanel x:Name="EditPanel" Grid.Row="1" Grid.Column="1" Margin="30"
-                    DataContext="{Binding SelectedItem}">
-
-            <StackPanel.Style>
-                <Style TargetType="StackPanel">
-                    <!-- 默认可见，根据 DataContext 是否为空自动隐藏 -->
-                    <Setter Property="Visibility" Value="Visible" />
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding}" Value="{x:Null}">
-                            <Setter Property="Visibility" Value="Hidden" />
-                        </DataTrigger>
-                        <!-- 原版数据只读 -->
-                        <DataTrigger Binding="{Binding IsVanilla}" Value="True">
-                            <Setter Property="IsEnabled" Value="False" />
-                            <Setter Property="Opacity" Value="0.6" />
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </StackPanel.Style>
-
-            <!-- 标题 -->
-            <TextBlock Text="关键字编辑 (Keyword / BattleEffectText)"
-                       FontSize="22" FontWeight="Bold" Margin="0,0,0,25"
-                       Foreground="{DynamicResource MaterialDesignBody}" />
-
-            <!-- 第一行：ID 和 Name -->
-            <Grid Margin="0,0,0,20">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="20" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-
-                <TextBox Grid.Column="0" Text="{Binding Id, UpdateSourceTrigger=PropertyChanged}"
-                         Style="{StaticResource MaterialDesignFloatingHintTextBox}"
-                         materialDesign:HintAssist.Hint="ID (Script ID)" />
-
-                <TextBox Grid.Column="2" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
-                         Style="{StaticResource MaterialDesignFloatingHintTextBox}"
-                         materialDesign:HintAssist.Hint="Name (显示名称)" />
-            </Grid>
-
-            <!-- 第二行：描述 -->
-            <TextBlock Text="Description (效果描述)" FontWeight="Bold" Margin="0,10,0,5" Opacity="0.8" />
-
-            <!-- 多行输入框 -->
-            <TextBox Text="{Binding Desc, UpdateSourceTrigger=PropertyChanged}"
-                     Height="200"
-                     AcceptsReturn="True"
-                     TextWrapping="Wrap"
-                     VerticalScrollBarVisibility="Auto"
-                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                     materialDesign:HintAssist.Hint="在此输入详细描述..."
-                     Padding="10" Margin="0,0,0,5" />
-
-            <!-- 提示信息 -->
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Opacity="0.6">
-                <TextBlock Text="* 支持多行输入" Margin="0,0,10,0" FontSize="11" />
-                <TextBlock Text="* 支持 {0} 占位符" FontSize="11" />
-            </StackPanel>
-
-        </StackPanel>
-    </Grid>
-</UserControl>
+        <TextBox
+          Grid.Column="0"
+          Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+          materialDesign:HintAssist.Hint="ID (Script ID)"
+          Text="{Binding Id, UpdateSourceTrigger=PropertyChanged}" />
+        <TextBox
+          Grid.Column="2"
+          Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+          materialDesign:HintAssist.Hint="Name (显示名称)"
+          Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" />
+      </Grid>
+      <TextBlock
+        Text="Description (效果描述)"
+        FontWeight="Bold"
+        Margin="0,10,0,5"
+        Opacity="0.8" />
+      <TextBox
+        Height="200"
+        AcceptsReturn="True"
+        TextWrapping="Wrap"
+        VerticalScrollBarVisibility="Auto"
+        Style="{StaticResource MaterialDesignOutlinedTextBox}"
+        materialDesign:HintAssist.Hint="在此输入详细描述..."
+        Padding="10"
+        Margin="0,0,0,5"
+        Text="{Binding Desc, UpdateSourceTrigger=PropertyChanged}" />
+      <StackPanel
+        Orientation="Horizontal"
+        HorizontalAlignment="Right"
+        Opacity="0.6">
+        <TextBlock
+          Text="* 支持多行输入"
+          Margin="0,0,10,0"
+          FontSize="11" />
+        <TextBlock
+          Text="* 支持 {0} 占位符"
+          FontSize="11" />
+      </StackPanel>
+    </StackPanel>
+  </Grid>
+</controls:UserControl>

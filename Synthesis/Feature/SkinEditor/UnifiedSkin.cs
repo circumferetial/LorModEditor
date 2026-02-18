@@ -1,50 +1,40 @@
 using System.Collections.ObjectModel;
+using System.Xml;
 using System.Xml.Linq;
 using Synthesis.Core.Abstraction;
 
-namespace Synthesis.Feature.OldSkinEditor;
+namespace Synthesis.Feature.SkinEditor;
 
 public class UnifiedSkin : XWrapper
 {
-    // 定义非动作节点的名称黑名单
-    // 这些节点不会被当做“小人动作”加载到列表中
     private static readonly HashSet<string> NonActionTags =
-    [
-        "Name",
-        "SoundList",
-        "AtkEffectPivotInfo",
-        "SpecialMotionPivotInfo",
-        "FaceInfo",
-        "ExtendedFaceInfo"
-    ];
+        ["Name", "SoundList", "AtkEffectPivotInfo", "SpecialMotionPivotInfo", "FaceInfo", "ExtendedFaceInfo"];
 
-    public UnifiedSkin(XElement element) : base(element)
+    public UnifiedSkin(XElement element)
+        : base(element)
     {
         LoadActions();
-
-        // 1. 初始化 SoundList (之前的代码)
-        var soundNode = ClothInfoNode.Element("SoundList");
-        if (soundNode == null)
+        var xElement = ClothInfoNode.Element("SoundList");
+        if (xElement == null)
         {
-            soundNode = new XElement("SoundList");
-            ClothInfoNode.Add(soundNode);
+            xElement = new XElement("SoundList");
+            ClothInfoNode.Add(xElement);
         }
     }
 
-    public string DisplayName => $"Skin: {Name}";
+    public string DisplayName => "Skin: " + Name;
 
-    // 获取 ModInfo 下的 ClothInfo 节点
     private XElement ClothInfoNode
     {
         get
         {
-            var n = Element.Element("ClothInfo");
-            if (n == null)
+            var xElement = Element.Element("ClothInfo");
+            if (xElement == null)
             {
-                n = new XElement("ClothInfo");
-                Element.Add(n);
+                xElement = new XElement("ClothInfo");
+                Element.Add(xElement);
             }
-            return n;
+            return xElement;
         }
     }
 
@@ -53,13 +43,13 @@ public class UnifiedSkin : XWrapper
         get => ClothInfoNode.Element("Name")?.Value ?? "NewSkin";
         set
         {
-            var n = ClothInfoNode.Element("Name");
-            if (n == null)
+            var xElement = ClothInfoNode.Element("Name");
+            if (xElement == null)
             {
-                n = new XElement("Name");
-                ClothInfoNode.Add(n);
+                xElement = new XElement("Name");
+                ClothInfoNode.Add(xElement);
             }
-            n.Value = value;
+            xElement.Value = value;
             OnPropertyChanged();
         }
     }
@@ -72,38 +62,76 @@ public class UnifiedSkin : XWrapper
         set => SetBoolAttr(Element, "Extended", value);
     }
 
-
     private void LoadActions()
     {
         Actions.Clear();
-        foreach (var node in ClothInfoNode.Elements())
+        foreach (var item in ClothInfoNode.Elements())
         {
-            var tagName = node.Name.LocalName;
-
-            // 【关键修改】如果在这个黑名单里，就跳过
-            if (NonActionTags.Contains(tagName)) continue;
-
-            Actions.Add(new UnifiedSkinAction(node));
+            var localName = item.Name.LocalName;
+            if (!NonActionTags.Contains(localName))
+            {
+                Actions.Add(new UnifiedSkinAction(item));
+            }
         }
     }
 
-    public void AddAction(string actionName)
+    public bool AddAction(string actionName, out UnifiedSkinAction? createdAction, out string? errorMessage)
     {
-        if (Actions.Any(x => x.ActionName == actionName)) return;
-
-        var node = new XElement(actionName);
-        node.Add(new XElement("Direction", "Front"));
-        // 默认加上 size 和 quality
-        node.Add(new XAttribute("size_x", "512"));
-        node.Add(new XAttribute("size_y", "512"));
-        node.Add(new XAttribute("quality", "50"));
-
-        node.Add(new XElement("Pivot", new XAttribute("pivot_x", "0"), new XAttribute("pivot_y", "0")));
-        node.Add(new XElement("Head", new XAttribute("head_x", "0"), new XAttribute("head_y", "0"),
+        createdAction = null;
+        errorMessage = null;
+        if (IsVanilla)
+        {
+            errorMessage = "原版皮肤不可编辑。";
+            return false;
+        }
+        var normalizedName = actionName?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(normalizedName))
+        {
+            errorMessage = "动作名称不能为空。";
+            return false;
+        }
+        try
+        {
+            XmlConvert.VerifyName(normalizedName);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "动作名不合法: " + ex.Message;
+            return false;
+        }
+        if (Actions.Any(x => x.ActionName.Equals(normalizedName, StringComparison.OrdinalIgnoreCase)))
+        {
+            errorMessage = "该动作已存在！";
+            return false;
+        }
+        var xElement = new XElement(normalizedName);
+        xElement.Add(new XElement("Direction", "Front"));
+        xElement.Add(new XAttribute("size_x", "512"));
+        xElement.Add(new XAttribute("size_y", "512"));
+        xElement.Add(new XAttribute("quality", "50"));
+        xElement.Add(new XElement("Pivot", new XAttribute("pivot_x", "0"), new XAttribute("pivot_y", "0")));
+        xElement.Add(new XElement("Head", new XAttribute("head_x", "0"), new XAttribute("head_y", "0"),
             new XAttribute("head_enable", "true")));
+        ClothInfoNode.Add(xElement);
+        createdAction = new UnifiedSkinAction(xElement);
+        Actions.Add(createdAction);
+        return true;
+    }
 
-        ClothInfoNode.Add(node);
-        Actions.Add(new UnifiedSkinAction(node));
+    public bool RemoveAction(UnifiedSkinAction action)
+    {
+        if (IsVanilla)
+        {
+            return false;
+        }
+        var unifiedSkinAction = Actions.FirstOrDefault(x =>
+            x == action || x.ActionName.Equals(action.ActionName, StringComparison.OrdinalIgnoreCase));
+        if (unifiedSkinAction == null)
+        {
+            return false;
+        }
+        unifiedSkinAction.Element.Remove();
+        return Actions.Remove(unifiedSkinAction);
     }
 
     public void DeleteXml()

@@ -7,13 +7,19 @@ public class NegativeHalfConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        if (value is double d) return -d / 2.0;
+        if (value is double num)
+        {
+            return (0.0 - num) / 2.0;
+        }
         return 0.0;
     }
 
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        if (value is double d) return -d * 2.0;
+        if (value is double num)
+        {
+            return (0.0 - num) * 2.0;
+        }
         return 0.0;
     }
 }

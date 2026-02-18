@@ -9,20 +9,11 @@ public class EnemyEditorViewModel : BindableBase
     public EnemyEditorViewModel(ProjectManager manager)
     {
         Manager = manager;
-
-        // 基础 CRUD
-        CreateCommand = new DelegateCommand(() => Manager.EnemyRepo.Create());
-        DeleteCommand = new DelegateCommand(Delete, () => SelectedItem != null)
-            .ObservesProperty(() => SelectedItem);
-
-        // 掉落操作
+        CreateCommand = new DelegateCommand(delegate { Manager.EnemyRepo.Create(); });
+        DeleteCommand = new DelegateCommand(Delete, () => SelectedItem != null).ObservesProperty(() => SelectedItem);
         AddDropCommand = new DelegateCommand(AddDrop, () => SelectedItem != null).ObservesProperty(() => SelectedItem);
         RemoveDropCommand = new DelegateCommand<UnifiedEnemyDrop>(RemoveDrop);
-
-        // 卡组操作
-        // 添加卡牌 (需要传入 UnifiedCard)
         AddCardToDeckCommand = new DelegateCommand<UnifiedCard>(AddCardToDeck);
-        // 移除卡牌 (需要传入 LorId)
         RemoveCardFromDeckCommand = new DelegateCommand<object>(RemoveCardFromDeck);
     }
 
@@ -34,33 +25,45 @@ public class EnemyEditorViewModel : BindableBase
         set => SetProperty(ref field, value);
     }
 
-    // 命令
     public DelegateCommand CreateCommand { get; }
+
     public DelegateCommand DeleteCommand { get; }
+
     public DelegateCommand AddDropCommand { get; }
+
     public DelegateCommand<UnifiedEnemyDrop> RemoveDropCommand { get; }
+
     public DelegateCommand<UnifiedCard> AddCardToDeckCommand { get; }
+
     public DelegateCommand<object> RemoveCardFromDeckCommand { get; }
 
-    // 逻辑实现
     private void Delete()
     {
-        if (SelectedItem == null ||
-            MessageBox.Show($"确定删除敌人 [{SelectedItem.DisplayName}]？", "提示", MessageBoxButton.YesNo) !=
-            MessageBoxResult.Yes) return;
-        Manager.EnemyRepo.Delete(SelectedItem);
-        SelectedItem = null;
+        if (SelectedItem != null &&
+            MessageBox.Show("确定删除敌人 [" + SelectedItem.DisplayName + "]？", "提示", MessageBoxButton.YesNo) ==
+            MessageBoxResult.Yes)
+        {
+            Manager.EnemyRepo.Delete(SelectedItem);
+            SelectedItem = null;
+        }
     }
 
     private void AddDrop()
     {
-        if (SelectedItem == null) return;
-        // 默认选第一本书，或者给个原版 ID
-        var defaultBook = Manager.DropBookRepo.Items.FirstOrDefault()?.GlobalId;
-        if (defaultBook != null) SelectedItem.AddDrop(defaultBook.Value);
+        if (SelectedItem != null)
+        {
+            var lorId = Manager.DropBookRepo.Items.FirstOrDefault()?.GlobalId;
+            if (lorId.HasValue)
+            {
+                SelectedItem.AddDrop(lorId.Value);
+            }
+        }
     }
 
-    private void RemoveDrop(UnifiedEnemyDrop drop) => SelectedItem?.RemoveDrop(drop);
+    private void RemoveDrop(UnifiedEnemyDrop drop)
+    {
+        SelectedItem?.RemoveDrop(drop);
+    }
 
     private void AddCardToDeck(UnifiedCard? card)
     {
@@ -72,9 +75,9 @@ public class EnemyEditorViewModel : BindableBase
 
     private void RemoveCardFromDeck(object o)
     {
-        if (SelectedItem != null && o is LorId cardId)
+        if (SelectedItem != null && o is LorId cid)
         {
-            SelectedItem.RemoveCardFromDeck(cardId);
+            SelectedItem.RemoveCardFromDeck(cid);
         }
     }
 }

@@ -6,6 +6,6 @@ public enum CardRange
     Far,
     FarArea,
     FarAreaEach,
-    Instance,
-    TeamNear
+    Special,
+    Instance
 }

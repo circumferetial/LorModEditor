@@ -1,45 +1,83 @@
 using System.IO;
 using System.Xml.Linq;
+using Synthesis.Core.Abstraction;
 using Synthesis.Core.Extensions;
 using Synthesis.Core.Tools;
 
 namespace Synthesis.Feature.DropBook;
 
-public class EtcRepository
+public class EtcRepository : IGameRepository
 {
-    private readonly List<XDocument> _docs = new();
-    public Dictionary<string, string> TextCache { get; } = new();
+    private readonly List<XDocument> _modDocs = [];
 
-    public bool HasLoc => _docs.Any(doc => !doc.IsVanilla());
+    private readonly List<XDocument> _vanillaDocs = [];
 
-    public void Clear()
+    public Dictionary<string, string> VanillaTextCache { get; } = new();
+
+    public Dictionary<string, string> ModTextCache { get; } = new();
+
+    public bool HasLoc => _modDocs.Count > 0;
+
+    public void ClearLocOnly()
     {
-        _docs.Clear();
-        TextCache.Clear();
+        _modDocs.Clear();
+        _vanillaDocs.Clear();
+        VanillaTextCache.Clear();
+        ModTextCache.Clear();
+    }
+
+    public void ClearModOnly()
+    {
+        _modDocs.Clear();
+        ModTextCache.Clear();
+    }
+
+    public void ClearAll()
+    {
+        _modDocs.Clear();
+        _vanillaDocs.Clear();
+        VanillaTextCache.Clear();
+        ModTextCache.Clear();
     }
 
     public void LoadResources(string root, string lang, string modId)
     {
-        if (!Directory.Exists(Path.Combine(root, $@"Localize\{lang}\etc"))) return;
-        // 这里的根节点是 localize
-        // 简单起见，我们不使用 BaseRepository 的 ScanAndLoad，而是手动扫描
-        var files = Directory.EnumerateFiles(Path.Combine(root, $@"Localize\{lang}\etc"))
-            .Where(f => Path.GetExtension(f) is ".txt" or ".xml");
-        foreach (var file in files)
+        LoadLocResources(root, lang, modId);
+    }
+
+    public void LoadLocResources(string projectRoot, string language, string modId)
+    {
+        var path = Path.Combine(projectRoot, "Localize\\" + language + "\\etc");
+        if (!Directory.Exists(path))
+        {
+            return;
+        }
+        foreach (var item in Directory.EnumerateFiles(path, "*.*", SearchOption.TopDirectoryOnly).Where(
+                     delegate(string f)
+                     {
+                         var extension = Path.GetExtension(f);
+                         return extension == ".txt" || extension == ".xml" ? true : false;
+                     }))
         {
             try
             {
-                var doc = XDocument.Load(file);
-                if (doc.Root?.Name.LocalName == "localize")
+                var xDocument = XDocument.Load(item);
+                if (!(xDocument.Root?.Name.LocalName != "localize"))
                 {
-                    doc.Root.AddAnnotation("PID:" + modId);
-                    doc.Root.AddAnnotation(new FilePathAnnotation(file));
-                    _docs.Add(doc);
+                    xDocument.Root.AddAnnotation("PID:" + modId);
+                    xDocument.Root.AddAnnotation(new FilePathAnnotation(item));
+                    if (xDocument.IsVanilla())
+                    {
+                        _vanillaDocs.Add(xDocument);
+                    }
+                    else
+                    {
+                        _modDocs.Add(xDocument);
+                    }
                 }
             }
             catch
             {
-                // ignored
             }
         }
     }
@@ -48,67 +86,106 @@ public class EtcRepository
     {
         if (!HasLoc)
         {
-            // 手动创建
-            var path = Path.Combine(root, $@"Localize\{lang}\etc\DropBookNames.xml");
-            var dir = Path.GetDirectoryName(path)!;
-            if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
-            if (!File.Exists(path))
+            var text = Path.Combine(root, "Localize\\" + lang + "\\etc\\DropBookNames.xml");
+            var directoryName = Path.GetDirectoryName(text);
+            if (!Directory.Exists(directoryName))
             {
-                var doc = new XDocument(new XDeclaration("1.0", "utf-8", "yes"), new XElement("localize"));
-                doc.Root?.AddAnnotation("PID:" + modId);
-                doc.Save(path);
-                _docs.Add(doc);
+                Directory.CreateDirectory(directoryName);
+            }
+            if (!File.Exists(text))
+            {
+                var xDocument = new XDocument(new XDeclaration("1.0", "utf-8", "yes"), new XElement("localize"));
+                xDocument.Root?.AddAnnotation("PID:" + modId);
+                xDocument.Root?.AddAnnotation(new FilePathAnnotation(text));
+                xDocument.Save(text);
+                _modDocs.Add(xDocument);
             }
         }
     }
 
-    public void Load()
+    public void Parse(bool containOriginal)
     {
-        foreach (var doc in _docs)
+        VanillaTextCache.Clear();
+        ModTextCache.Clear();
+        if (containOriginal)
         {
-            if (doc.Root?.Name.LocalName != "localize") continue;
-            foreach (var node in doc.Root.Elements("text"))
+            foreach (var vanillaDoc in _vanillaDocs)
             {
-                var id = node.Attribute("id")?.Value;
-                if (!string.IsNullOrEmpty(id)) TextCache[id] = node.Value;
+                if (vanillaDoc.Root?.Name.LocalName != "localize")
+                {
+                    continue;
+                }
+                foreach (var item in vanillaDoc.Root.Elements("text"))
+                {
+                    var text = item.Attribute("id")?.Value;
+                    if (!string.IsNullOrEmpty(text))
+                    {
+                        VanillaTextCache[text] = item.Value;
+                    }
+                }
             }
         }
-    }
-
-// 修改 GetText 方法
-    public string? GetText(string id)// 返回可空字符串
-        => string.IsNullOrEmpty(id) ? null : TextCache.GetValueOrDefault(id);// 没找到返回 null
-
-    public void SetText(string id, string value)
-    {
-        if (string.IsNullOrEmpty(id)) return;
-        TextCache[id] = value;
-
-        // 写入
-        foreach (var doc in _docs)
+        foreach (var modDoc in _modDocs)
         {
-            if (doc.IsVanilla()) continue;
-            var existing = doc.Root?.Elements("text").FirstOrDefault(x => x.Attribute("id")?.Value == id);
-            if (existing != null)
+            if (modDoc.Root?.Name.LocalName != "localize")
             {
-                existing.Value = value;
-                return;
+                continue;
+            }
+            foreach (var item2 in modDoc.Root.Elements("text"))
+            {
+                var text2 = item2.Attribute("id")?.Value;
+                if (!string.IsNullOrEmpty(text2))
+                {
+                    ModTextCache[text2] = item2.Value;
+                }
             }
         }
-
-        var target = _docs.FirstOrDefault(d => !d.IsVanilla());
-        target?.Root?.Add(new XElement("text", new XAttribute("id", id), value));
     }
 
     public void SaveFiles(string modId)
     {
-        foreach (var doc in _docs)
+        foreach (var modDoc in _modDocs)
         {
-            if (doc.GetPackageId() == modId)
+            if (!(modDoc.GetPackageId() != modId))
             {
-                var path = doc.Root?.Annotation<FilePathAnnotation>()?.Path;
-                if (!string.IsNullOrEmpty(path)) doc.Save(path);
+                var text = modDoc.Root?.Annotation<FilePathAnnotation>()?.Path;
+                if (!string.IsNullOrEmpty(text))
+                {
+                    modDoc.Save(text);
+                }
             }
         }
+    }
+
+    public string? GetText(string id)
+    {
+        if (string.IsNullOrEmpty(id))
+        {
+            return null;
+        }
+        if (!ModTextCache.TryGetValue(id, out var value))
+        {
+            return VanillaTextCache.GetValueOrDefault(id);
+        }
+        return value;
+    }
+
+    public void SetText(string id, string value)
+    {
+        if (string.IsNullOrEmpty(id))
+        {
+            return;
+        }
+        ModTextCache[id] = value;
+        foreach (var modDoc in _modDocs)
+        {
+            var xElement = modDoc.Root?.Elements("text").FirstOrDefault(x => x.Attribute("id")?.Value == id);
+            if (xElement != null)
+            {
+                xElement.Value = value;
+                return;
+            }
+        }
+        _modDocs.FirstOrDefault()?.Root?.Add(new XElement("text", new XAttribute("id", id), value));
     }
 }

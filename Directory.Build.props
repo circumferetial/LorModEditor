@@ -1,0 +1,11 @@
+<Project>
+    <PropertyGroup>
+        <!-- Quality baseline: turn analyzers on explicitly so Gate B can collect actionable warnings -->
+        <EnableNETAnalyzers>true</EnableNETAnalyzers>
+        <AnalysisLevel>latest</AnalysisLevel>
+        <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+        <Deterministic>true</Deterministic>
+        <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+</Project>

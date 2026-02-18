@@ -9,166 +9,196 @@ public class CardRepository : BaseRepository<UnifiedCard>
 {
     public override void LoadResources(string root, string lang, string modId)
     {
-        ScanAndLoad(Path.Combine(root, @"StaticInfo\Card"), "DiceCardXmlRoot", modId, AddDataDoc);
-        ScanAndLoad(Path.Combine(root, $@"Localize\{lang}\BattlesCards"), "BattleCardDescRoot", modId, AddLocDoc);
+        ScanAndLoad(Path.Combine(root, "StaticInfo\\Card"), "DiceCardXmlRoot", modId, AddDataDoc);
+        ScanAndLoad(Path.Combine(root, "Localize\\" + lang + "\\BattlesCards"), "BattleCardDescRoot", modId, AddLocDoc);
+    }
+
+    public override void LoadLocResources(string projectRoot, string language, string modId)
+    {
+        ScanAndLoad(Path.Combine(projectRoot, "Localize\\" + language + "\\BattlesCards"), "BattleCardDescRoot", modId,
+            AddLocDoc);
     }
 
     public override void EnsureDefaults(string root, string lang, string modId)
     {
-        if (!HasData)
-            CreateXmlTemplate(Path.Combine(root, @"StaticInfo\Card\CardInfo.xml"), "DiceCardXmlRoot", modId,
+        if (!HasModData)
+        {
+            CreateXmlTemplate(Path.Combine(root, "StaticInfo\\Card\\CardInfo.xml"), "DiceCardXmlRoot", modId,
                 AddDataDoc);
-        if (!HasLoc)
-            CreateXmlTemplate(Path.Combine(root, $@"Localize\{lang}\BattlesCards\BattlesCards.xml"),
+        }
+        if (!HasModLoc)
+        {
+            CreateXmlTemplate(Path.Combine(root, "Localize\\" + lang + "\\BattlesCards\\BattlesCards.xml"),
                 "BattleCardDescRoot", modId, AddLocDoc);
+        }
     }
 
     public void DuplicateCard(UnifiedCard? sourceCard)
     {
-        if (sourceCard == null) return;
-
-        // 1. 确定目标数据文件 (必须是非原版)
-        // 如果源卡是原版卡，我们就把它复制到当前的 Mod 文件里
-        // 如果源卡是 Mod 卡，就复制到它所在的文件里
-        var targetDataDoc = sourceCard.IsVanilla ? GetTargetDataDoc("DiceCardXmlRoot") : sourceCard.Element.Document;
-
-        if (targetDataDoc?.Root == null)
+        if (sourceCard == null)
+        {
+            return;
+        }
+        var obj = sourceCard.IsVanilla ? GetTargetDataDoc("DiceCardXmlRoot") : sourceCard.Element.Document;
+        if (obj?.Root == null)
         {
             throw new Exception("未找到可写入的 CardInfo 文件");
         }
-
-        // 2. 计算新 ID
-        var newId = 10000000;
+        var num = 10000000;
         if (Items.Any(x => !x.IsVanilla))
-            newId = Items.Where(x => !x.IsVanilla).Max(x => int.TryParse(x.Id, out var i) ? i : 0) + 1;
-        var strId = newId.ToString();
-
-        // 3. 克隆数据节点 (Deep Copy)
-        var newData = new XElement(sourceCard.Element);
-        // 修改 ID
-        newData.SetAttributeValue("ID", strId);
-
-        // 写入数据文件
-        targetDataDoc.Root.Add(newData);
-
-        // 4. 克隆翻译节点 (如果有)
-        // 我们需要手动去翻译文件里找，或者根据 sourceCard 的 Name 构造一个新的
-        var parentLoc = GetTargetLocDoc("BattleCardDescRoot")?.Root?.Element("cardDescList");
-        if (parentLoc == null)
         {
-            var listNode = new XElement("cardDescList");
-            GetTargetLocDoc("BattleCardDescRoot")?.Root?.Add(listNode);
-
-            parentLoc = listNode;
+            num = Items.Where(x => !x.IsVanilla).Max(x => int.TryParse(x.Id, out var result) ? result : 0) + 1;
         }
-
-        var newText = new XElement("BattleCardDesc", new XAttribute("ID", strId));
-        // 复制原名 + (Copy)
-        newText.Add(new XElement("LocalizedName", sourceCard.Name + " (Copy)"));
-
-
-        parentLoc.Add(newText);
-
-        // 5. 添加到 UI
-        // 注意：如果是复制原版卡，新卡是 Mod 卡，所以 Parent 要传 modLocParent
-        var newWrapper = new UnifiedCard(newData, newText, parentLoc);
-        Items.Add(newWrapper);
+        var value = num.ToString();
+        var xElement = new XElement(sourceCard.Element);
+        xElement.SetAttributeValue("ID", value);
+        obj.Root.Add(xElement);
+        var xElement2 = GetTargetLocDoc("BattleCardDescRoot")?.Root?.Element("cardDescList");
+        if (xElement2 == null)
+        {
+            var xElement3 = new XElement("cardDescList");
+            GetTargetLocDoc("BattleCardDescRoot")?.Root?.Add(xElement3);
+            xElement2 = xElement3;
+        }
+        var xElement4 = new XElement("BattleCardDesc", new XAttribute("ID", value));
+        xElement4.Add(new XElement("LocalizedName", sourceCard.Name + " (Copy)"));
+        xElement2.Add(xElement4);
+        var item = new UnifiedCard(xElement, xElement4, xElement2);
+        Items.Add(item);
     }
 
-    public override void Load()
+    public override void Parse(bool containOriginal)
     {
-        var modLocParent = GetTargetLocDoc("BattleCardDescRoot")?.Root?.Element("cardDescList") ??
-                           GetTargetLocDoc("BattleCardDescRoot")?.Root;
-        foreach (var doc in _dataDocs)
+        Items.Clear();
+        IEnumerable<XDocument> enumerable;
+        if (!containOriginal)
         {
-            if (doc.Root?.Name.LocalName != "DiceCardXmlRoot") continue;
-            foreach (var node in doc.Root.Elements("Card"))
+            IEnumerable<XDocument> modDataDocs = _modDataDocs;
+            enumerable = modDataDocs;
+        }
+        else
+        {
+            enumerable = _dataDocs;
+        }
+        var enumerable2 = enumerable;
+        IEnumerable<XDocument> source;
+        if (!containOriginal)
+        {
+            IEnumerable<XDocument> modDataDocs = _modLocDocs;
+            source = modDataDocs;
+        }
+        else
+        {
+            source = _locDocs;
+        }
+        var array = source.Where(d => d.Root?.Name.LocalName == "BattleCardDescRoot").ToArray();
+        var textParent = GetTargetLocDoc("BattleCardDescRoot")?.Root?.Element("cardDescList") ??
+                         GetTargetLocDoc("BattleCardDescRoot")?.Root;
+        var dictionary = new Dictionary<string, (XElement, XElement)>();
+        var array2 = array;
+        foreach (var obj in array2)
+        {
+            var flag = obj.IsVanilla();
+            foreach (var item in obj.Descendants("BattleCardDesc"))
             {
-                var id = node.Attribute("ID")?.Value ?? "";
-                if (string.IsNullOrEmpty(id)) continue;
-
-                XElement? foundText = null;
-                var isVanilla = doc.IsVanilla();
-
-                var targetLocs = _locDocs.Where(d => d.Root?.Name.LocalName == "BattleCardDescRoot").ToArray();
-                foreach (var loc in targetLocs)
+                var text = item.Attribute("ID")?.Value;
+                if (!string.IsNullOrEmpty(text))
                 {
-                    if (loc.IsVanilla() == isVanilla)
+                    if (!dictionary.ContainsKey(text))
                     {
-                        foundText = loc.Descendants("BattleCardDesc")
-                            .FirstOrDefault(x => x.Attribute("ID")?.Value == id);
-                        if (foundText != null) break;
+                        dictionary[text] = (null, null);
+                    }
+                    var tuple = dictionary[text];
+                    if (flag)
+                    {
+                        dictionary[text] = (item, tuple.Item2);
+                    }
+                    else
+                    {
+                        dictionary[text] = (tuple.Item1, item);
                     }
                 }
-                if (foundText == null)
+            }
+        }
+        foreach (var item2 in enumerable2)
+        {
+            if (item2.Root?.Name.LocalName != "DiceCardXmlRoot")
+            {
+                continue;
+            }
+            var flag2 = item2.IsVanilla();
+            foreach (var item3 in item2.Root.Descendants("Card"))
+            {
+                var text2 = item3.Attribute("ID")?.Value ?? "";
+                if (string.IsNullOrEmpty(text2))
                 {
-                    foreach (var loc in targetLocs)
+                    continue;
+                }
+                XElement text3 = null;
+                if (dictionary.TryGetValue(text2, out var value))
+                {
+                    object obj2;
+                    if (!containOriginal)
                     {
-                        if (loc.IsVanilla() != isVanilla)
+                        obj2 = value.Item2;
+                    }
+                    else if (!flag2)
+                    {
+                        obj2 = value.Item2;
+                        if (obj2 == null)
                         {
-                            foundText = loc.Descendants("BattleCardDesc")
-                                .FirstOrDefault(x => x.Attribute("ID")?.Value == id);
-                            if (foundText != null) break;
+                            (obj2, _) = value;
                         }
                     }
+                    else
+                    {
+                        obj2 = value.Item1 ?? value.Item2;
+                    }
+                    text3 = (XElement)obj2;
                 }
-                Items.Add(new UnifiedCard(node, foundText, modLocParent));
+                Items.Add(new UnifiedCard(item3, text3, textParent));
             }
         }
     }
 
     public UnifiedCard Create()
     {
-        var targetDoc = GetTargetDataDoc("DiceCardXmlRoot");
-        if (targetDoc == null) throw new Exception("未找到可写入的 CardInfo 文件(非原版)");
-
-        var newId = 10000000;
+        var targetDataDoc = GetTargetDataDoc("DiceCardXmlRoot");
+        if (targetDataDoc == null)
+        {
+            throw new Exception("未找到可写入的 CardInfo 文件(非原版)");
+        }
+        var num = 10000000;
         if (Items.Any(x => !x.IsVanilla))
-            newId = Items.Where(x => !x.IsVanilla).Max(x => int.TryParse(x.Id, out var i) ? i : 0) + 1;
-        var strId = newId.ToString();
-
-        // 1. 创建数据节点
-        var node = new XElement("Card", new XAttribute("ID", strId));
-        node.Add(new XElement("Rarity", "Common"));
-        node.Add(new XElement("Spec", new XAttribute("Cost", 0), new XAttribute("Range", "Near")));
-        node.Add(new XElement("Script", ""));
-        targetDoc.Root?.Add(node);
-
-        // 2. 创建翻译节点
-        var locDoc = GetTargetLocDoc("BattleCardDescRoot");
-        var parent = locDoc?.Root;
-
-        if (parent != null)
         {
-            // 【核心修复】检查是否存在 cardDescList 层级
-            var listNode = parent.Element("cardDescList");
-            if (listNode == null)
+            num = Items.Where(x => !x.IsVanilla).Max(x => int.TryParse(x.Id, out var result) ? result : 0) + 1;
+        }
+        var value = num.ToString();
+        var xElement = new XElement("Card", new XAttribute("ID", value));
+        xElement.Add(new XElement("Rarity", "Common"));
+        xElement.Add(new XElement("Spec", new XAttribute("Cost", 0), new XAttribute("Range", "Near")));
+        xElement.Add(new XElement("Script", ""));
+        targetDataDoc.Root?.Add(xElement);
+        var xElement2 = GetTargetLocDoc("BattleCardDescRoot")?.Root;
+        if (xElement2 != null)
+        {
+            var xElement3 = xElement2.Element("cardDescList");
+            if (xElement3 == null)
             {
-                // 如果不存在，创建一个，并挂载到 Root 下
-                listNode = new XElement("cardDescList");
-                parent.Add(listNode);
+                xElement3 = new XElement("cardDescList");
+                xElement2.Add(xElement3);
             }
-
-            // 将 parent 更新为 listNode，这样新节点就会加在 <cardDescList> 里面
-            parent = listNode;
-
-            // 创建翻译内容
-            var text = new XElement("BattleCardDesc", new XAttribute("ID", strId));
-            text.Add(new XElement("LocalizedName", "New Card"));
-            parent.Add(text);
-
-            // 3. 添加到 UI
-            var unifiedCard = new UnifiedCard(node, text, parent);
+            xElement2 = xElement3;
+            var xElement4 = new XElement("BattleCardDesc", new XAttribute("ID", value));
+            xElement4.Add(new XElement("LocalizedName", "New Card"));
+            xElement2.Add(xElement4);
+            var unifiedCard = new UnifiedCard(xElement, xElement4, xElement2);
             Items.Add(unifiedCard);
             return unifiedCard;
         }
-        else
-        {
-            // 如果没找到翻译文件，只加数据
-            var unifiedCard = new UnifiedCard(node, null, null);
-            Items.Add(unifiedCard);
-            return unifiedCard;
-        }
+        var unifiedCard2 = new UnifiedCard(xElement, null, null);
+        Items.Add(unifiedCard2);
+        return unifiedCard2;
     }
 
     public override void Delete(UnifiedCard item)

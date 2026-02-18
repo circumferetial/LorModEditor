@@ -1,320 +1,395 @@
-<UserControl x:Class="Synthesis.Feature.Stage.StageEditorView"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-
-             xmlns:prism="http://prismlibrary.com/"
-
-
-             xmlns:components="clr-namespace:Synthesis.Views.Components"
-             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
-             xmlns:core="clr-namespace:Synthesis.Core"
-             xmlns:wrappers="clr-namespace:Synthesis.Feature.Stage"
-
-             mc:Ignorable="d"
-             prism:ViewModelLocator.AutoWireViewModel="True"
-             d:DataContext="{d:DesignInstance Type=wrappers:StageEditorViewModel, IsDesignTimeCreatable=False}"
-             x:Name="Root"
-             d:DesignHeight="800" d:DesignWidth="1000"
-             TextElement.Foreground="{DynamicResource MaterialDesignBody}">
-
-
-    <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="260" />
-            <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
-
-        <!-- 1. 工具栏 -->
-        <Border Grid.Row="0" Grid.ColumnSpan="2"
-                Background="{DynamicResource MaterialDesignPaper}"
-                BorderBrush="{DynamicResource MaterialDesignDivider}"
-                BorderThickness="0,0,0,1" Padding="8,4">
-            <StackPanel Orientation="Horizontal">
-                <Button Content="➕ 新建关卡" Command="{Binding CreateCommand}"
-                        Style="{StaticResource MaterialDesignRaisedButton}"
-                        Margin="0,0,10,0" Padding="12,6" />
-                <Button Content="🗑️ 删除关卡" Command="{Binding DeleteCommand}"
+<controls:UserControl
+  x:Class="Synthesis.Feature.Stage.StageEditorView"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:prism="http://prismlibrary.com/"
+  xmlns:components="clr-namespace:Synthesis.Views.Components"
+  xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+  xmlns:core="clr-namespace:Synthesis.Core"
+  xmlns:wrappers="clr-namespace:Synthesis.Feature.Stage"
+  x:Name="Root"
+  prism:ViewModelLocator.AutoWireViewModel="True"
+  TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+  xmlns:controls="clr-namespace:System.Windows.Controls;assembly=PresentationFramework">
+  <Grid>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition
+        Width="260" />
+      <ColumnDefinition
+        Width="*" />
+    </Grid.ColumnDefinitions>
+    <Grid.RowDefinitions>
+      <RowDefinition
+        Height="Auto" />
+      <RowDefinition
+        Height="*" />
+    </Grid.RowDefinitions>
+    <Border
+      Grid.Row="0"
+      Grid.ColumnSpan="2"
+      Background="{DynamicResource MaterialDesignPaper}"
+      BorderBrush="{DynamicResource MaterialDesignDivider}"
+      BorderThickness="0,0,0,1"
+      Padding="8,4">
+      <StackPanel
+        Orientation="Horizontal">
+        <Button
+          Content="➕ 新建关卡"
+          Style="{StaticResource MaterialDesignRaisedButton}"
+          Margin="0,0,10,0"
+          Padding="12,6"
+          Command="{Binding CreateCommand}" />
+        <Button
+          Content="🗑️ 删除关卡"
+          Style="{StaticResource MaterialDesignOutlinedButton}"
+          Foreground="#FF5252"
+          BorderBrush="#FF5252"
+          Padding="12,6"
+          Margin="0,0,10,0"
+          Command="{Binding DeleteCommand}" />
+      </StackPanel>
+    </Border>
+    <DockPanel
+      Grid.Row="1"
+      Grid.Column="0">
+      <TextBox
+        x:Name="SearchBox"
+        DockPanel.Dock="Top"
+        Margin="4"
+        Padding="4"
+        materialDesign:HintAssist.Hint="搜索 ID 或 名称..."
+        Style="{StaticResource MaterialDesignOutlinedTextBox}"
+        TextChanged="SearchBox_TextChanged" />
+      <ListBox
+        x:Name="StageList"
+        VirtualizingPanel.IsVirtualizing="True"
+        VirtualizingPanel.VirtualizationMode="Recycling"
+        DisplayMemberPath="DisplayName"
+        BorderThickness="0,1,1,0"
+        BorderBrush="{DynamicResource MaterialDesignDivider}"
+        ItemsSource="{Binding Manager.StageRepo.Items}"
+        SelectedItem="{Binding SelectedItem}"
+        SelectionChanged="StageList_SelectionChanged" />
+    </DockPanel>
+    <ScrollViewer
+      Grid.Row="1"
+      Grid.Column="1"
+      VerticalScrollBarVisibility="Auto">
+      <StackPanel
+        x:Name="EditPanel"
+        Margin="30"
+        DataContext="{Binding SelectedItem}">
+        <FrameworkElement.Style>
+          <Style
+            TargetType="{x:Type StackPanel}">
+            <Setter
+              Property="Visibility"
+              Value="Visible" />
+            <Style.Triggers>
+              <DataTrigger
+                Binding="{Binding}"
+                Value="{x:Null}">
+                <Setter
+                  Property="Visibility"
+                  Value="Hidden" />
+              </DataTrigger>
+              <DataTrigger
+                Value="True"
+                Binding="{Binding IsVanilla}">
+                <Setter
+                  Property="IsEnabled"
+                  Value="False" />
+                <Setter
+                  Property="UIElement.Opacity"
+                  Value="0.6" />
+              </DataTrigger>
+            </Style.Triggers>
+          </Style>
+        </FrameworkElement.Style>
+        <TextBlock
+          Text="关卡编辑 (Stage)"
+          FontSize="22"
+          FontWeight="Bold"
+          Margin="0,0,0,25" />
+        <Expander
+          Header="⚙️ 基础配置 (Basic)"
+          IsExpanded="True"
+          Margin="0,0,0,15">
+          <StackPanel
+            Margin="0,15,0,0">
+            <Grid
+              Margin="0,0,0,15">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition
+                  Width="*" />
+                <ColumnDefinition
+                  Width="20" />
+                <ColumnDefinition
+                  Width="*" />
+              </Grid.ColumnDefinitions>
+              <TextBox
+                Grid.Column="0"
+                Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+                materialDesign:HintAssist.Hint="ID"
+                Text="{Binding Id, UpdateSourceTrigger=PropertyChanged}" />
+              <TextBox
+                Grid.Column="2"
+                Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+                materialDesign:HintAssist.Hint="Name (名称)"
+                Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" />
+            </Grid>
+            <Grid
+              Margin="0,0,0,15">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition
+                  Width="2*" />
+                <ColumnDefinition
+                  Width="20" />
+                <ColumnDefinition
+                  Width="*" />
+              </Grid.ColumnDefinitions>
+              <StackPanel
+                Grid.Column="0">
+                <TextBox
+                  Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+                  materialDesign:HintAssist.Hint="Floor (楼层)"
+                  Margin="0,0,0,15"
+                  Text="{Binding FloorNum, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBox
+                  Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+                  materialDesign:HintAssist.Hint="Chapter (章节)"
+                  Text="{Binding Chapter, UpdateSourceTrigger=PropertyChanged}" />
+              </StackPanel>
+              <StackPanel
+                Grid.Column="2">
+                <components:ImageSelector
+                  LabelText="Story Icon"
+                  PreviewWidth="80"
+                  PreviewHeight="80"
+                  SelectedImageName="{Binding StoryType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                  ImageList="{Binding DataContext.Manager.Artworks, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                  Manager="{Binding DataContext.Manager, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+              </StackPanel>
+            </Grid>
+            <Separator
+              Background="{DynamicResource MaterialDesignDivider}"
+              Margin="0,10,0,20" />
+            <materialDesign:Card
+              Control.Background="#1AFFFFFF"
+              UniformCornerRadius="8"
+              Control.Padding="15"
+              FrameworkElement.Margin="0,0,0,10"
+              materialDesign:ElevationAssist.Elevation="Dp0">
+              <StackPanel>
+                <TextBlock
+                  Text="💌 邀请函配置 (Invitation)"
+                  FontWeight="Bold"
+                  Margin="0,0,0,15"
+                  Foreground="{DynamicResource SecondaryHueMidBrush}" />
+                <ComboBox
+                  ItemsSource="{x:Static core:GlobalValues.InvitationCombines}"
+                  Style="{StaticResource MaterialDesignFloatingHintComboBox}"
+                  materialDesign:HintAssist.Hint="Combine Mode (组合模式)"
+                  Margin="0,0,0,15"
+                  SelectedItem="{Binding InvitationCombine, UpdateSourceTrigger=PropertyChanged}" />
+                <Grid
+                  Visibility="{Binding IsBookValueMode, Converter='{StaticResource BoolToVis}'}">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition
+                      Width="*" />
+                    <ColumnDefinition
+                      Width="20" />
+                    <ColumnDefinition
+                      Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <TextBox
+                    Grid.Column="0"
+                    Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+                    materialDesign:HintAssist.Hint="Total Value (总价值)"
+                    Text="{Binding InvitationValue, UpdateSourceTrigger=PropertyChanged}" />
+                  <TextBox
+                    Grid.Column="2"
+                    Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+                    materialDesign:HintAssist.Hint="Book Num (书籍数量)"
+                    Text="{Binding InvitationNum, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+                <Grid
+                  Visibility="{Binding IsBookRecipeMode, Converter='{StaticResource BoolToVis}'}">
+                  <StackPanel>
+                    <DockPanel
+                      LastChildFill="True"
+                      Margin="0,0,0,10">
+                      <Button
+                        DockPanel.Dock="Right"
+                        Content="添加"
                         Style="{StaticResource MaterialDesignOutlinedButton}"
-                        Foreground="#FF5252" BorderBrush="#FF5252"
-                        Padding="12,6" Margin="0,0,10,0" />
-            </StackPanel>
-        </Border>
-
-        <!-- 2. 左侧列表 -->
-        <DockPanel Grid.Row="1" Grid.Column="0">
-            <TextBox x:Name="SearchBox" DockPanel.Dock="Top"
-                     Margin="4" Padding="4"
-                     TextChanged="SearchBox_TextChanged"
-                     materialDesign:HintAssist.Hint="搜索 ID 或 名称..."
-                     Style="{StaticResource MaterialDesignOutlinedTextBox}" />
-
-            <ListBox x:Name="StageList"
-                     VirtualizingStackPanel.IsVirtualizing="True"
-                     VirtualizingStackPanel.VirtualizationMode="Recycling"
-                     ItemsSource="{Binding Manager.StageRepo.Items}"
-                     DisplayMemberPath="DisplayName"
-                     SelectedItem="{Binding SelectedItem}"
-                     SelectionChanged="StageList_SelectionChanged"
-                     BorderThickness="0,1,1,0"
-                     BorderBrush="{DynamicResource MaterialDesignDivider}" />
-        </DockPanel>
-
-        <!-- 3. 右侧编辑区 -->
-        <ScrollViewer Grid.Row="1" Grid.Column="1" VerticalScrollBarVisibility="Auto">
-
-            <StackPanel x:Name="EditPanel" Margin="30"
-                        DataContext="{Binding SelectedItem}"
-                        d:DataContext="{d:DesignInstance Type=wrappers:UnifiedStage}">
-
-                <StackPanel.Style>
-                    <Style TargetType="StackPanel">
-                        <Setter Property="Visibility" Value="Hidden" />
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding Converter={StaticResource IsNullConverter}}" Value="False">
-                                <Setter Property="Visibility" Value="Visible" />
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding IsVanilla}" Value="True">
-                                <Setter Property="IsEnabled" Value="False" />
-                                <Setter Property="Opacity" Value="0.6" />
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </StackPanel.Style>
-
-                <TextBlock Text="关卡编辑 (Stage)" FontSize="22" FontWeight="Bold" Margin="0,0,0,25" />
-
-                <!-- Section 1: 基础配置 -->
-                <Expander Header="⚙️ 基础配置 (Basic)" IsExpanded="True" Margin="0,0,0,15">
-                    <StackPanel Margin="0,15,0,0">
-                        <Grid Margin="0,0,0,15">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" /><ColumnDefinition Width="20" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-
-                            <TextBox Grid.Column="0" Text="{Binding Id, UpdateSourceTrigger=PropertyChanged}"
-                                     Style="{StaticResource MaterialDesignFloatingHintTextBox}"
-                                     materialDesign:HintAssist.Hint="ID" />
-
-                            <TextBox Grid.Column="2" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
-                                     Style="{StaticResource MaterialDesignFloatingHintTextBox}"
-                                     materialDesign:HintAssist.Hint="Name (名称)" />
-                        </Grid>
-
-                        <Grid Margin="0,0,0,15">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="2*" /><ColumnDefinition Width="20" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-
-                            <StackPanel Grid.Column="0">
-                                <TextBox Text="{Binding FloorNum, UpdateSourceTrigger=PropertyChanged}"
-                                         Style="{StaticResource MaterialDesignFloatingHintTextBox}"
-                                         materialDesign:HintAssist.Hint="Floor (楼层)" Margin="0,0,0,15" />
-
-                                <TextBox Text="{Binding Chapter, UpdateSourceTrigger=PropertyChanged}"
-                                         Style="{StaticResource MaterialDesignFloatingHintTextBox}"
-                                         materialDesign:HintAssist.Hint="Chapter (章节)" />
-                            </StackPanel>
-
-                            <StackPanel Grid.Column="2">
-                                <components:ImageSelector
-                                    LabelText="Story Icon"
-                                    SelectedImageName="{Binding StoryType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                    ImageList="{Binding DataContext.Manager.Artworks, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                    Manager="{Binding DataContext.Manager, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                    PreviewWidth="80" PreviewHeight="80" />
-                            </StackPanel>
-                        </Grid>
-
-                        <Separator Background="{DynamicResource MaterialDesignDivider}" Margin="0,10,0,20" />
-
-                        <!-- 💌 邀请函配置 (Card 样式) -->
-                        <materialDesign:Card Background="#1AFFFFFF" UniformCornerRadius="8" Padding="15"
-                                             Margin="0,0,0,10" materialDesign:ElevationAssist.Elevation="Dp0">
-                            <StackPanel>
-                                <TextBlock Text="💌 邀请函配置 (Invitation)" FontWeight="Bold" Margin="0,0,0,15"
-                                           Foreground="{DynamicResource SecondaryHueMidBrush}" />
-
-                                <ComboBox ItemsSource="{x:Static core:GlobalValues.InvitationCombines}"
-                                          SelectedItem="{Binding InvitationCombine, UpdateSourceTrigger=PropertyChanged}"
-                                          Style="{StaticResource MaterialDesignFloatingHintComboBox}"
-                                          materialDesign:HintAssist.Hint="Combine Mode (组合模式)"
-                                          Margin="0,0,0,15" />
-
-                                <!-- 模式 A: BookValue -->
-                                <Grid Visibility="{Binding IsBookValueMode, Converter={StaticResource BoolToVis}}">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" /><ColumnDefinition Width="20" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-
-                                    <TextBox Grid.Column="0"
-                                             Text="{Binding InvitationValue, UpdateSourceTrigger=PropertyChanged}"
-                                             Style="{StaticResource MaterialDesignFloatingHintTextBox}"
-                                             materialDesign:HintAssist.Hint="Total Value (总价值)" />
-
-                                    <TextBox Grid.Column="2"
-                                             Text="{Binding InvitationNum, UpdateSourceTrigger=PropertyChanged}"
-                                             Style="{StaticResource MaterialDesignFloatingHintTextBox}"
-                                             materialDesign:HintAssist.Hint="Book Num (书籍数量)" />
-                                </Grid>
-
-                                <!-- 模式 B: BookRecipe (列表) -->
-                                <Grid Visibility="{Binding IsBookRecipeMode, Converter={StaticResource BoolToVis}}">
-                                    <StackPanel>
-                                        <!-- 添加栏 -->
-                                        <DockPanel LastChildFill="True" Margin="0,0,0,10">
-                                            <Button DockPanel.Dock="Right" Content="添加" Click="AddInvBook_Click"
-                                                    Style="{StaticResource MaterialDesignOutlinedButton}"
-                                                    Padding="10,4" Margin="10,0,0,0" Height="30" />
-
-                                            <ComboBox x:Name="InvBookCombo" IsEditable="True"
-                                                      Text="{Binding DataContext.NewBookIdToAdd, ElementName=Root, UpdateSourceTrigger=PropertyChanged}"
-                                                      ItemsSource="{Binding DataContext.Manager.DropBookRepo.Items, ElementName=Root}"
-                                                      SelectedItem="{Binding DataContext.SelectedDropBook, ElementName=Root}"
-                                                      DisplayMemberPath="DisplayName"
-                                                      SelectedValuePath="GlobalId"
-                                                      Style="{StaticResource MaterialDesignFloatingHintComboBox}"
-                                                      materialDesign:HintAssist.Hint="搜索并添加书籍..." />
-                                        </DockPanel>
-
-                                        <!-- 列表 (Chips 风格) -->
-                                        <ItemsControl ItemsSource="{Binding InvitationBooks}">
-                                            <ItemsControl.ItemsPanel>
-                                                <ItemsPanelTemplate>
-                                                    <WrapPanel />
-                                                </ItemsPanelTemplate>
-                                            </ItemsControl.ItemsPanel>
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <materialDesign:Chip Content="{Binding}"
-                                                                         IsDeletable="True"
-                                                                         DeleteClick="RemoveInvBook_Click"
-                                                                         Margin="0,0,8,8" />
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                    </StackPanel>
-                                </Grid>
-                            </StackPanel>
-                        </materialDesign:Card>
+                        Padding="10,4"
+                        Margin="10,0,0,0"
+                        Height="30"
+                        Click="AddInvBook_Click" />
+                      <ComboBox
+                        x:Name="InvBookCombo"
+                        IsEditable="True"
+                        DisplayMemberPath="DisplayName"
+                        SelectedValuePath="GlobalId"
+                        Style="{StaticResource MaterialDesignFloatingHintComboBox}"
+                        materialDesign:HintAssist.Hint="搜索并添加书籍..."
+                        Text="{Binding DataContext.NewBookIdToAdd, ElementName=Root, UpdateSourceTrigger=PropertyChanged}"
+                        ItemsSource="{Binding DataContext.Manager.DropBookRepo.Items, ElementName=Root}"
+                        SelectedItem="{Binding DataContext.SelectedDropBook, ElementName=Root}" />
+                    </DockPanel>
+                    <ItemsControl
+                      ItemsSource="{Binding InvitationBooks}">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                          <WrapPanel />
+                        </ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                          <materialDesign:Chip
+                            IsDeletable="True"
+                            FrameworkElement.Margin="0,0,8,8"
+                            ContentControl.Content="{Binding}"
+                            DeleteClick="RemoveInvBook_Click" />
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                </Grid>
+              </StackPanel>
+            </materialDesign:Card>
+          </StackPanel>
+        </Expander>
+        <Expander
+          Header="🌊 战斗波次 (Waves)"
+          IsExpanded="True"
+          Margin="0,0,0,15">
+          <StackPanel
+            Margin="0,15,0,0">
+            <Button
+              Content="➕ 添加新波次 (Wave)"
+              Style="{StaticResource MaterialDesignOutlinedButton}"
+              HorizontalAlignment="Left"
+              Margin="0,0,0,20"
+              Command="{Binding DataContext.AddWaveCommand, ElementName=Root}" />
+            <ItemsControl
+              ItemsSource="{Binding Waves}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate
+                  DataType="{x:Type wrappers:UnifiedWave}">
+                  <materialDesign:Card
+                    FrameworkElement.Margin="0,0,0,15"
+                    Control.Padding="15"
+                    UniformCornerRadius="6"
+                    Control.Background="{DynamicResource MaterialDesignPaper}"
+                    materialDesign:ElevationAssist.Elevation="Dp2">
+                    <StackPanel>
+                      <DockPanel
+                        LastChildFill="False"
+                        Margin="0,0,0,15">
+                        <StackPanel
+                          Orientation="Horizontal"
+                          VerticalAlignment="Center">
+                          <materialDesign:PackIcon
+                            Kind="Waves"
+                            FrameworkElement.Margin="0,0,8,0"
+                            Foreground="{DynamicResource PrimaryHueMidBrush}" />
+                          <TextBlock
+                            Text="Wave Configuration"
+                            FontWeight="Bold"
+                            Foreground="{DynamicResource PrimaryHueMidBrush}" />
+                        </StackPanel>
+                        <Button
+                          Content="删除此波"
+                          DockPanel.Dock="Right"
+                          Style="{StaticResource MaterialDesignOutlinedButton}"
+                          Foreground="#FF5252"
+                          BorderBrush="#FF5252"
+                          Padding="10,4"
+                          Height="28"
+                          Click="RemoveWave_Click" />
+                      </DockPanel>
+                      <Grid
+                        Margin="0,0,0,15">
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition
+                            Width="*" />
+                          <ColumnDefinition
+                            Width="20" />
+                          <ColumnDefinition
+                            Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox
+                          Grid.Column="0"
+                          Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+                          materialDesign:HintAssist.Hint="Formation (阵型ID)"
+                          Text="{Binding FormationId, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBox
+                          Grid.Column="2"
+                          Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+                          materialDesign:HintAssist.Hint="Max Unit (最大人数)"
+                          Text="{Binding AvailableUnit, UpdateSourceTrigger=PropertyChanged}" />
+                      </Grid>
+                      <TextBox
+                        Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+                        materialDesign:HintAssist.Hint="Manager Script (战斗脚本类名)"
+                        Margin="0,0,0,15"
+                        Text="{Binding ManagerScript, UpdateSourceTrigger=PropertyChanged}" />
+                      <Separator
+                        Background="{DynamicResource MaterialDesignDivider}"
+                        Margin="0,0,0,10" />
+                      <TextBlock
+                        Text="Enemies (敌人配置)"
+                        FontWeight="Bold"
+                        Margin="0,0,0,10"
+                        Opacity="0.7" />
+                      <DockPanel
+                        Margin="0,0,0,10">
+                        <Button
+                          DockPanel.Dock="Right"
+                          Content="添加"
+                          Style="{StaticResource MaterialDesignOutlinedButton}"
+                          Padding="10,4"
+                          Margin="10,0,0,0"
+                          Height="30"
+                          Click="AddUnit_Click" />
+                        <ComboBox
+                          x:Name="EnemySelector"
+                          DisplayMemberPath="DisplayName"
+                          SelectedValuePath="GlobalId"
+                          Style="{StaticResource MaterialDesignFloatingHintComboBox}"
+                          materialDesign:HintAssist.Hint="选择敌人单位..."
+                          ItemsSource="{Binding DataContext.Manager.EnemyRepo.Items, ElementName=Root}" />
+                      </DockPanel>
+                      <ItemsControl
+                        ItemsSource="{Binding Units}">
+                        <ItemsControl.ItemsPanel>
+                          <ItemsPanelTemplate>
+                            <WrapPanel />
+                          </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate>
+                            <materialDesign:Chip
+                              IsDeletable="True"
+                              FrameworkElement.Margin="0,0,8,8"
+                              ContentControl.Content="{Binding}"
+                              FrameworkElement.Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=materialDesign:Card}}"
+                              DeleteClick="RemoveUnit_Click" />
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
                     </StackPanel>
-                </Expander>
-
-                <!-- Section 2: 波次管理 (Waves) -->
-                <Expander Header="🌊 战斗波次 (Waves)" IsExpanded="True" Margin="0,0,0,15">
-                    <StackPanel Margin="0,15,0,0">
-                        <Button Content="➕ 添加新波次 (Wave)"
-                                Command="{Binding DataContext.AddWaveCommand, ElementName=Root}"
-                                Style="{StaticResource MaterialDesignOutlinedButton}"
-                                HorizontalAlignment="Left" Margin="0,0,0,20" />
-
-                        <!-- Wave 列表 -->
-                        <ItemsControl ItemsSource="{Binding Waves}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate DataType="{x:Type wrappers:UnifiedWave}">
-                                    <!-- 每一波是一个 Card -->
-                                    <materialDesign:Card Margin="0,0,0,15" Padding="15" UniformCornerRadius="6"
-                                                         Background="{DynamicResource MaterialDesignPaper}"
-                                                         materialDesign:ElevationAssist.Elevation="Dp2">
-                                        <StackPanel>
-                                            <!-- 波次标题栏 -->
-                                            <DockPanel LastChildFill="False" Margin="0,0,0,15">
-                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                    <materialDesign:PackIcon Kind="Waves" Margin="0,0,8,0"
-                                                                             Foreground="{DynamicResource PrimaryHueMidBrush}" />
-                                                    <TextBlock Text="Wave Configuration" FontWeight="Bold"
-                                                               Foreground="{DynamicResource PrimaryHueMidBrush}" />
-                                                </StackPanel>
-
-                                                <Button Content="删除此波" DockPanel.Dock="Right" Click="RemoveWave_Click"
-                                                        Style="{StaticResource MaterialDesignOutlinedButton}"
-                                                        Foreground="#FF5252" BorderBrush="#FF5252"
-                                                        Padding="10,4" Height="28" />
-                                            </DockPanel>
-
-                                            <!-- 参数行 -->
-                                            <Grid Margin="0,0,0,15">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*" /><ColumnDefinition Width="20" />
-                                                    <ColumnDefinition Width="*" />
-                                                </Grid.ColumnDefinitions>
-
-                                                <TextBox Grid.Column="0"
-                                                         Text="{Binding FormationId, UpdateSourceTrigger=PropertyChanged}"
-                                                         Style="{StaticResource MaterialDesignFloatingHintTextBox}"
-                                                         materialDesign:HintAssist.Hint="Formation (阵型ID)" />
-
-                                                <TextBox Grid.Column="2"
-                                                         Text="{Binding AvailableUnit, UpdateSourceTrigger=PropertyChanged}"
-                                                         Style="{StaticResource MaterialDesignFloatingHintTextBox}"
-                                                         materialDesign:HintAssist.Hint="Max Unit (最大人数)" />
-                                            </Grid>
-
-                                            <!-- 脚本 -->
-                                            <TextBox
-                                                Text="{Binding ManagerScript, UpdateSourceTrigger=PropertyChanged}"
-                                                Style="{StaticResource MaterialDesignFloatingHintTextBox}"
-                                                materialDesign:HintAssist.Hint="Manager Script (战斗脚本类名)"
-                                                Margin="0,0,0,15" />
-
-                                            <Separator Background="{DynamicResource MaterialDesignDivider}"
-                                                       Margin="0,0,0,10" />
-
-                                            <!-- 敌人列表 (Enemies) -->
-                                            <TextBlock Text="Enemies (敌人配置)" FontWeight="Bold" Margin="0,0,0,10"
-                                                       Opacity="0.7" />
-
-                                            <!-- 添加敌人 -->
-                                            <DockPanel Margin="0,0,0,10">
-                                                <Button DockPanel.Dock="Right" Content="添加" Click="AddUnit_Click"
-                                                        Style="{StaticResource MaterialDesignOutlinedButton}"
-                                                        Padding="10,4" Margin="10,0,0,0" Height="30" />
-
-                                                <!-- 这里的 EnemySelector 是局部控件，需要注意 CodeBehind 获取方式 -->
-                                                <ComboBox x:Name="EnemySelector"
-                                                          ItemsSource="{Binding DataContext.Manager.EnemyRepo.Items, ElementName=Root}"
-                                                          DisplayMemberPath="DisplayName"
-                                                          SelectedValuePath="GlobalId"
-                                                          Style="{StaticResource MaterialDesignFloatingHintComboBox}"
-                                                          materialDesign:HintAssist.Hint="选择敌人单位..." />
-                                            </DockPanel>
-
-                                            <!-- 已添加敌人 (Chips) -->
-                                            <ItemsControl ItemsSource="{Binding Units}">
-                                                <ItemsControl.ItemsPanel>
-                                                    <ItemsPanelTemplate>
-                                                        <WrapPanel />
-                                                    </ItemsPanelTemplate>
-                                                </ItemsControl.ItemsPanel>
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <materialDesign:Chip Content="{Binding}"
-                                                                             IsDeletable="True"
-                                                                             DeleteClick="RemoveUnit_Click"
-                                                                             Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=materialDesign:Card}}"
-                                                                             Margin="0,0,8,8" />
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
-
-                                        </StackPanel>
-                                    </materialDesign:Card>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </StackPanel>
-                </Expander>
-
-                <TextBlock Height="50" />
-            </StackPanel>
-        </ScrollViewer>
-    </Grid>
-</UserControl>
+                  </materialDesign:Card>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Expander>
+        <TextBlock
+          Height="50" />
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</controls:UserControl>

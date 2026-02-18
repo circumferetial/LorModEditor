@@ -1,168 +1,268 @@
 using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
+using Synthesis.Feature.Enemy;
 
 namespace Synthesis.Core.Tools;
 
-public static partial class DesignExporter
+public static class DesignExporter
 {
     public static void ExportToMarkdown(ProjectManager manager, string outputPath)
     {
-        var sb = new StringBuilder();
-
-        sb.AppendLine($"# {manager.CurrentModId} - 角色设计文档");
-        sb.AppendLine($"> 导出时间: {DateTime.Now:yyyy-MM-dd HH:mm}");
-        sb.AppendLine("");// 空行
-        sb.AppendLine("---");
-        sb.AppendLine("");// 空行
-
-        var modEnemies = manager.EnemyRepo.Items.Where(x => !x.IsVanilla).OrderBy(x => x.Id).ToArray();
-
-        if (modEnemies.Length == 0)
+        var stringBuilder = new StringBuilder();
+        var stringBuilder2 = stringBuilder;
+        var stringBuilder3 = stringBuilder2;
+        var handler = new StringBuilder.AppendInterpolatedStringHandler(11, 1, stringBuilder2);
+        handler.AppendLiteral("# ");
+        handler.AppendFormatted(manager.CurrentModId);
+        handler.AppendLiteral(" - 角色设计文档");
+        stringBuilder3.AppendLine(ref handler);
+        stringBuilder2 = stringBuilder;
+        var stringBuilder4 = stringBuilder2;
+        handler = new StringBuilder.AppendInterpolatedStringHandler(8, 1, stringBuilder2);
+        handler.AppendLiteral("> 导出时间: ");
+        handler.AppendFormatted(DateTime.Now, "yyyy-MM-dd HH:mm");
+        stringBuilder4.AppendLine(ref handler);
+        stringBuilder.AppendLine("");
+        stringBuilder.AppendLine("---");
+        stringBuilder.AppendLine("");
+        UnifiedEnemy[] array = (from x in manager.EnemyRepo.Items
+            where !x.IsVanilla
+            orderby x.Id
+            select x).ToArray();
+        if (array.Length == 0)
         {
-            sb.AppendLine("*没有找到自定义敌人数据*");
+            stringBuilder.AppendLine("*没有找到自定义敌人数据*");
         }
-
-        foreach (var enemy in modEnemies)
+        var array2 = array;
+        foreach (var enemy in array2)
         {
-            // === 1. 角色头衔 ===
-            sb.AppendLine($"# 🎭 角色: [{enemy.Id}] {EscapeMarkdown(enemy.Name)}");
-
-            // === 2. 核心书页 ===
-            var book = manager.BookRepo.Items.FirstOrDefault(b => b.Id == enemy.Id);
-            if (book != null)
+            stringBuilder2 = stringBuilder;
+            var stringBuilder5 = stringBuilder2;
+            handler = new StringBuilder.AppendInterpolatedStringHandler(12, 2, stringBuilder2);
+            handler.AppendLiteral("# \ud83c\udfad 角色: [");
+            handler.AppendFormatted(enemy.Id);
+            handler.AppendLiteral("] ");
+            handler.AppendFormatted(EscapeMarkdown(enemy.Name));
+            stringBuilder5.AppendLine(ref handler);
+            var unifiedBook = manager.BookRepo.Items.FirstOrDefault(b => b.Id == enemy.Id);
+            if (unifiedBook != null)
             {
-                sb.AppendLine($"## 📖 核心书页: [{book.Id}] {EscapeMarkdown(book.Name)}");
-                sb.AppendLine($"- **数值**: HP {book.HP} | 混乱 {book.Break} | 速度 {book.SpeedMin}-{book.Speed}");
-                sb.AppendLine($"- **抗性 (物理)**: 斩{book.SResist} / 穿{book.PResist} / 打{book.HResist}");
-                sb.AppendLine($"- **抗性 (混乱)**: 斩{book.SBResist} / 穿{book.PBResist} / 打{book.HBResist}");
-                sb.AppendLine("");// 空行
-
-                sb.AppendLine("### ⚡ 核心被动");
-                if (book.Passives.Count == 0) sb.AppendLine("> *无*");
-
-                foreach (var pid in book.Passives)
+                stringBuilder2 = stringBuilder;
+                var stringBuilder6 = stringBuilder2;
+                handler = new StringBuilder.AppendInterpolatedStringHandler(15, 2, stringBuilder2);
+                handler.AppendLiteral("## \ud83d\udcd6 核心书页: [");
+                handler.AppendFormatted(unifiedBook.Id);
+                handler.AppendLiteral("] ");
+                handler.AppendFormatted(EscapeMarkdown(unifiedBook.Name));
+                stringBuilder6.AppendLine(ref handler);
+                stringBuilder2 = stringBuilder;
+                var stringBuilder7 = stringBuilder2;
+                handler = new StringBuilder.AppendInterpolatedStringHandler(26, 4, stringBuilder2);
+                handler.AppendLiteral("- **数值**: HP ");
+                handler.AppendFormatted(unifiedBook.HP);
+                handler.AppendLiteral(" | 混乱 ");
+                handler.AppendFormatted(unifiedBook.Break);
+                handler.AppendLiteral(" | 速度 ");
+                handler.AppendFormatted(unifiedBook.SpeedMin);
+                handler.AppendLiteral("-");
+                handler.AppendFormatted(unifiedBook.Speed);
+                stringBuilder7.AppendLine(ref handler);
+                stringBuilder2 = stringBuilder;
+                var stringBuilder8 = stringBuilder2;
+                handler = new StringBuilder.AppendInterpolatedStringHandler(24, 3, stringBuilder2);
+                handler.AppendLiteral("- **抗性 (物理)**: 斩");
+                handler.AppendFormatted(unifiedBook.SResist);
+                handler.AppendLiteral(" / 穿");
+                handler.AppendFormatted(unifiedBook.PResist);
+                handler.AppendLiteral(" / 打");
+                handler.AppendFormatted(unifiedBook.HResist);
+                stringBuilder8.AppendLine(ref handler);
+                stringBuilder2 = stringBuilder;
+                var stringBuilder9 = stringBuilder2;
+                handler = new StringBuilder.AppendInterpolatedStringHandler(24, 3, stringBuilder2);
+                handler.AppendLiteral("- **抗性 (混乱)**: 斩");
+                handler.AppendFormatted(unifiedBook.SBResist);
+                handler.AppendLiteral(" / 穿");
+                handler.AppendFormatted(unifiedBook.PBResist);
+                handler.AppendLiteral(" / 打");
+                handler.AppendFormatted(unifiedBook.HBResist);
+                stringBuilder9.AppendLine(ref handler);
+                stringBuilder.AppendLine("");
+                stringBuilder.AppendLine("### ⚡ 核心被动");
+                if (unifiedBook.Passives.Count == 0)
                 {
-                    var passive = manager.PassiveRepo.Items.FirstOrDefault(p => p.GlobalId == pid);
-                    if (passive != null)
+                    stringBuilder.AppendLine("> *无*");
+                }
+                foreach (var pid in unifiedBook.Passives)
+                {
+                    var unifiedPassive = manager.PassiveRepo.Items.FirstOrDefault(p => p.GlobalId == pid);
+                    if (unifiedPassive != null)
                     {
-                        sb.AppendLine($"**[{EscapeMarkdown(passive.Name)}]** (Cost: {passive.Cost})");
-                        if (!string.IsNullOrWhiteSpace(passive.Desc))
+                        stringBuilder2 = stringBuilder;
+                        var stringBuilder10 = stringBuilder2;
+                        handler = new StringBuilder.AppendInterpolatedStringHandler(15, 2, stringBuilder2);
+                        handler.AppendLiteral("**[");
+                        handler.AppendFormatted(EscapeMarkdown(unifiedPassive.Name));
+                        handler.AppendLiteral("]** (Cost: ");
+                        handler.AppendFormatted(unifiedPassive.Cost);
+                        handler.AppendLiteral(")");
+                        stringBuilder10.AppendLine(ref handler);
+                        if (!string.IsNullOrWhiteSpace(unifiedPassive.Desc))
                         {
-                            // 【修复】保留被动描述的换行
-                            // Markdown 引用换行需要: "  \n> " (两个空格+换行+大于号)
-                            var fmtDesc = SearchLineBreaks().Replace(EscapeMarkdown(passive.Desc), "  \n> ");
-                            sb.AppendLine($"> {fmtDesc}");
+                            var value = SearchLineBreaks().Replace(EscapeMarkdown(unifiedPassive.Desc), "  \n> ");
+                            stringBuilder2 = stringBuilder;
+                            var stringBuilder11 = stringBuilder2;
+                            handler = new StringBuilder.AppendInterpolatedStringHandler(2, 1, stringBuilder2);
+                            handler.AppendLiteral("> ");
+                            handler.AppendFormatted(value);
+                            stringBuilder11.AppendLine(ref handler);
                         }
                     }
                     else
                     {
-                        sb.AppendLine($"**[{pid}]** (未知/原版)");
+                        stringBuilder2 = stringBuilder;
+                        var stringBuilder12 = stringBuilder2;
+                        handler = new StringBuilder.AppendInterpolatedStringHandler(14, 1, stringBuilder2);
+                        handler.AppendLiteral("**[");
+                        handler.AppendFormatted(pid);
+                        handler.AppendLiteral("]** (未知/原版)");
+                        stringBuilder12.AppendLine(ref handler);
                     }
-                    sb.AppendLine("");// 每个被动之间空一行，更清晰
+                    stringBuilder.AppendLine("");
                 }
             }
             else
             {
-                sb.AppendLine("> *未绑定核心书页或书页 ID 无效*");
+                stringBuilder.AppendLine("> *未绑定核心书页或书页 ID 无效*");
             }
-            sb.AppendLine("");
-            sb.AppendLine("---");
-            sb.AppendLine("");
-
-            // === 3. 卡组信息 ===
-            sb.AppendLine($"## 🃏 战斗卡组 ({enemy.DeckCardIds.Count} 张)");
-            sb.AppendLine("");// 空行
-
-            var deckGroups = enemy.DeckCardIds
-                .GroupBy(id => id)
-                .Select(g => new { Id = g.Key, Count = g.Count() })
-                .OrderBy(x => x.Id.ItemId);
-
-            foreach (var group in deckGroups)
+            stringBuilder.AppendLine("");
+            stringBuilder.AppendLine("---");
+            stringBuilder.AppendLine("");
+            stringBuilder2 = stringBuilder;
+            var stringBuilder13 = stringBuilder2;
+            handler = new StringBuilder.AppendInterpolatedStringHandler(15, 1, stringBuilder2);
+            handler.AppendLiteral("## \ud83c\udccf 战斗卡组 (");
+            handler.AppendFormatted(enemy.DeckCardIds.Count);
+            handler.AppendLiteral(" 张)");
+            stringBuilder13.AppendLine(ref handler);
+            stringBuilder.AppendLine("");
+            foreach (var group in from id in enemy.DeckCardIds
+                     group id by id
+                     into g
+                     select new
+                     {
+                         Id = g.Key,
+                         Count = g.Count()
+                     }
+                     into x
+                     orderby x.Id.ItemId
+                     select x)
             {
-                var card = manager.CardRepo.Items.FirstOrDefault(c => c.GlobalId == group.Id && !c.IsVanilla)
-                           ?? manager.CardRepo.Items.FirstOrDefault(c => c.GlobalId == group.Id);
-
-                if (card != null)
+                var unifiedCard = manager.CardRepo.Items.FirstOrDefault(c => c.GlobalId == group.Id && !c.IsVanilla) ??
+                                  manager.CardRepo.Items.FirstOrDefault(c => c.GlobalId == group.Id);
+                if (unifiedCard != null)
                 {
-                    // 标题
-                    sb.AppendLine($"### [{card.Cost}费] **{EscapeMarkdown(card.Name)}** (x{group.Count})");
-
-                    // 卡牌主脚本描述
-                    if (!string.IsNullOrEmpty(card.Script))
+                    stringBuilder2 = stringBuilder;
+                    var stringBuilder14 = stringBuilder2;
+                    handler = new StringBuilder.AppendInterpolatedStringHandler(16, 3, stringBuilder2);
+                    handler.AppendLiteral("### [");
+                    handler.AppendFormatted(unifiedCard.Cost);
+                    handler.AppendLiteral("费] **");
+                    handler.AppendFormatted(EscapeMarkdown(unifiedCard.Name));
+                    handler.AppendLiteral("** (x");
+                    handler.AppendFormatted(group.Count);
+                    handler.AppendLiteral(")");
+                    stringBuilder14.AppendLine(ref handler);
+                    if (!string.IsNullOrEmpty(unifiedCard.Script))
                     {
-                        var scriptDesc = FindAbilityDesc(manager, card.Script);
-                        if (!string.IsNullOrEmpty(scriptDesc))
+                        var text = FindAbilityDesc(manager, unifiedCard.Script);
+                        if (!string.IsNullOrEmpty(text))
                         {
-                            // 【修复】卡牌描述换行
-                            var fmtDesc = SearchLineBreaks().Replace(EscapeMarkdown(scriptDesc), "  \n> ");
-                            sb.AppendLine($"> *{fmtDesc}*");
+                            var value2 = SearchLineBreaks().Replace(EscapeMarkdown(text), "  \n> ");
+                            stringBuilder2 = stringBuilder;
+                            var stringBuilder15 = stringBuilder2;
+                            handler = new StringBuilder.AppendInterpolatedStringHandler(4, 1, stringBuilder2);
+                            handler.AppendLiteral("> *");
+                            handler.AppendFormatted(value2);
+                            handler.AppendLiteral("*");
+                            stringBuilder15.AppendLine(ref handler);
                         }
                     }
-
-                    // 必须加空行，否则 Markdown 可能不渲染下面的表格
-                    sb.AppendLine("");
-
-                    // 骰子列表
-                    if (card.Behaviours.Count > 0)
+                    stringBuilder.AppendLine("");
+                    if (unifiedCard.Behaviours.Count > 0)
                     {
-                        sb.AppendLine("| 骰子 | 细节 | 类型 | 效果 |");
-                        sb.AppendLine("| :--- | :--- | :--- | :--- |");
-
-                        foreach (var d in card.Behaviours)
+                        stringBuilder.AppendLine("| 骰子 | 细节 | 类型 | 效果 |");
+                        stringBuilder.AppendLine("| :--- | :--- | :--- | :--- |");
+                        foreach (var behaviour in unifiedCard.Behaviours)
                         {
-                            var effectText = "-";
-                            if (!string.IsNullOrEmpty(d.Script))
+                            var value3 = "-";
+                            if (!string.IsNullOrEmpty(behaviour.Script))
                             {
-                                var foundDesc = FindAbilityDesc(manager, d.Script);
-                                // 【修复】表格内换行必须用 <br/>
-                                effectText = !string.IsNullOrEmpty(foundDesc)
-                                    ? SearchLineBreaks().Replace(EscapeMarkdown(foundDesc), "<br/>")
-                                    : $"`{d.Script}`";
+                                var text2 = FindAbilityDesc(manager, behaviour.Script);
+                                value3 = !string.IsNullOrEmpty(text2)
+                                    ? SearchLineBreaks().Replace(EscapeMarkdown(text2), "<br/>")
+                                    : "`" + behaviour.Script + "`";
                             }
-
-                            sb.AppendLine($"| {d.Min}-{d.Dice} | {d.Detail} | {d.Type} | {effectText} |");
+                            stringBuilder2 = stringBuilder;
+                            var stringBuilder16 = stringBuilder2;
+                            handler = new StringBuilder.AppendInterpolatedStringHandler(14, 5, stringBuilder2);
+                            handler.AppendLiteral("| ");
+                            handler.AppendFormatted(behaviour.Min);
+                            handler.AppendLiteral("-");
+                            handler.AppendFormatted(behaviour.Dice);
+                            handler.AppendLiteral(" | ");
+                            handler.AppendFormatted(behaviour.Detail);
+                            handler.AppendLiteral(" | ");
+                            handler.AppendFormatted(behaviour.Type);
+                            handler.AppendLiteral(" | ");
+                            handler.AppendFormatted(value3);
+                            handler.AppendLiteral(" |");
+                            stringBuilder16.AppendLine(ref handler);
                         }
                     }
-                    sb.AppendLine("");// 卡牌结束后空行
-                    sb.AppendLine("***");// 分隔线
-                    // 空行
+                    stringBuilder.AppendLine("");
+                    stringBuilder.AppendLine("***");
                 }
                 else
                 {
-                    sb.AppendLine($"### [未知卡牌] ID: {group.Id} (x{group.Count})");
+                    stringBuilder2 = stringBuilder;
+                    var stringBuilder17 = stringBuilder2;
+                    handler = new StringBuilder.AppendInterpolatedStringHandler(19, 2, stringBuilder2);
+                    handler.AppendLiteral("### [未知卡牌] ID: ");
+                    handler.AppendFormatted(group.Id);
+                    handler.AppendLiteral(" (x");
+                    handler.AppendFormatted(group.Count);
+                    handler.AppendLiteral(")");
+                    stringBuilder17.AppendLine(ref handler);
                 }
-                sb.AppendLine("");// 空行
+                stringBuilder.AppendLine("");
             }
-
-            sb.AppendLine("");
+            stringBuilder.AppendLine("");
         }
-
-        File.WriteAllText(outputPath, sb.ToString());
+        File.WriteAllText(outputPath, stringBuilder.ToString());
     }
 
     private static string EscapeMarkdown(string text)
     {
-        if (string.IsNullOrEmpty(text)) return "";
-        return text
-            .Replace("[", "\\[")
-            .Replace("]", "\\]")
-            .Replace("|", "\\|");
+        if (string.IsNullOrEmpty(text))
+        {
+            return "";
+        }
+        return text.Replace("[", "\\[").Replace("]", "\\]").Replace("|", "\\|");
     }
 
     private static string FindAbilityDesc(ProjectManager manager, string scriptId)
     {
-        if (string.IsNullOrEmpty(scriptId)) return "";
-
-        var ability = manager.AbilityRepo.Items
-            .Where(a => a.Id == scriptId)
-            .OrderBy(a => a.IsVanilla)
-            .FirstOrDefault();
-
-        return ability?.Desc ?? "";
+        if (string.IsNullOrEmpty(scriptId))
+        {
+            return "";
+        }
+        return (from a in manager.AbilityRepo.Items
+            where a.Id == scriptId
+            orderby a.IsVanilla
+            select a).FirstOrDefault()?.Desc ?? "";
     }
 
-    [GeneratedRegex(@"\r\n?|\n")]
-    private static partial Regex SearchLineBreaks();
+    private static Regex SearchLineBreaks() => new("\\r\\n?|\\n", RegexOptions.Compiled);
 }

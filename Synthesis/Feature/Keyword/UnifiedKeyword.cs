@@ -1,5 +1,4 @@
 using System.Xml.Linq;
-using JetBrains.Annotations;
 using Synthesis.Core.Abstraction;
 using Synthesis.Core.Attributes;
 
@@ -7,13 +6,14 @@ namespace Synthesis.Feature.Keyword;
 
 public class UnifiedKeyword : XWrapper
 {
-    public UnifiedKeyword(XElement element, XElement? parent) : base(element)
+    public UnifiedKeyword(XElement element, XElement? parent)
+        : base(element)
     {
         Parent = parent;
         InitDefaults();
     }
 
-    [UsedImplicitly] public XElement? Parent { get; }
+    public XElement? Parent { get; }
 
     public string Id
     {
@@ -21,7 +21,7 @@ public class UnifiedKeyword : XWrapper
         set
         {
             SetAttr(Element, "ID", value);
-            OnPropertyChanged(nameof(DisplayName));
+            OnPropertyChanged("DisplayName");
         }
     }
 
@@ -31,7 +31,7 @@ public class UnifiedKeyword : XWrapper
         set
         {
             SetElementValue(Element, "Name", value);
-            OnPropertyChanged(nameof(DisplayName));
+            OnPropertyChanged("DisplayName");
         }
     }
 
@@ -41,15 +41,13 @@ public class UnifiedKeyword : XWrapper
         set => SetElementValue(Element, "Desc", value);
     }
 
-    [NoAutoInit] public string DisplayName => $"{Id} - {Name}";
-
-    // 其实对于纯文本 XML，Wrapper 很少需要自己创建自己 (因为 Create 时已经创建好了)
-    // 但如果我们需要支持“复制”或者特殊操作，保留这个 parent 引用是有用的。
-    // Keyword 没有类似 EnsureTextNode 的复杂逻辑，因为它本身就是 TextNode。
+    [NoAutoInit] public string DisplayName => Id + " - " + Name;
 
     public void DeleteXml()
     {
-        if (IsVanilla) return;
-        Element.Remove();
+        if (!IsVanilla)
+        {
+            Element.Remove();
+        }
     }
 }

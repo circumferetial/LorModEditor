@@ -5,68 +5,18 @@ using Synthesis.Core.Tools;
 
 namespace Synthesis.Feature.SkinEditor;
 
-internal enum SkinCompatibilitySeverity
-{
-    Warning,
-    Blocking
-}
-
-internal enum SkinFixPolicy
-{
-    PreferPenetrateForDefault
-}
-
-internal sealed class SkinCompatibilityIssue(
-    string code,
-    string message,
-    SkinCompatibilitySeverity severity,
-    string skinName,
-    string? actionName = null)
-{
-    public string Code { get; } = code;
-    public string Message { get; } = message;
-    public SkinCompatibilitySeverity Severity { get; } = severity;
-    public string SkinName { get; } = skinName;
-    public string? ActionName { get; } = actionName;
-}
-
-internal sealed class SkinFixResult(string skinName)
-{
-    public string SkinName { get; } = skinName;
-    public bool HasChanges { get; set; }
-    public List<string> Messages { get; } = [];
-    public List<string> Errors { get; } = [];
-}
-
 internal static class SkinCompatibilityGuard
 {
     private static readonly HashSet<string> NonActionTags = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "Name",
-        "SoundList",
-        "AtkEffectPivotInfo",
-        "SpecialMotionPivotInfo",
-        "FaceInfo",
-        "ExtendedFaceInfo"
-    };
+        { "Name", "SoundList", "AtkEffectPivotInfo", "SpecialMotionPivotInfo", "FaceInfo", "ExtendedFaceInfo" };
 
     private static readonly string[] CopyImageSuffixes =
     [
-        "",
-        "_skin",
-        "_mid",
-        "_mid_skin",
-        "_back",
-        "_back_skin",
-        "_front",
-        "_front_skin",
-        "_large",
-        "_front_large",
+        "", "_skin", "_mid", "_mid_skin", "_back", "_back_skin", "_front", "_front_skin", "_large", "_front_large",
         "_effect"
     ];
 
-    public static IReadOnlyList<ActionDetail> PresetActions { get; } =
-    [
+    public static IReadOnlyList<ActionDetail> PresetActions { get; } = Array.AsReadOnly([
         ActionDetail.Default,
         ActionDetail.Guard,
         ActionDetail.Evade,
@@ -96,251 +46,240 @@ internal static class SkinCompatibilityGuard
         ActionDetail.Slash2,
         ActionDetail.Penetrate2,
         ActionDetail.Hit2
-    ];
+    ]);
 
     public static IReadOnlyList<SkinCompatibilityIssue> Validate(XElement modInfoRoot)
     {
-        var issues = new List<SkinCompatibilityIssue>();
-        var clothInfo = modInfoRoot.Element("ClothInfo");
-        if (clothInfo == null) return issues;
-
-        var skinName = ResolveSkinName(modInfoRoot, clothInfo);
-        var actionNodes = GetActionNodes(clothInfo).ToList();
-
-        var hasDefault = actionNodes.Any(n => IsAction(n, ActionDetail.Default));
-        if (actionNodes.Count > 0 && !hasDefault)
+        var list = new List<SkinCompatibilityIssue>();
+        var xElement = modInfoRoot.Element("ClothInfo");
+        if (xElement == null)
         {
-            issues.Add(new SkinCompatibilityIssue(
-                "SKIN_NO_DEFAULT",
-                "缺少 Default 动作，导出后可能触发游戏 KeyNotFoundException。",
-                SkinCompatibilitySeverity.Blocking,
-                skinName,
-                ActionDetail.Default.ToString()));
+            return list;
         }
-
-        var hasPenetrate = actionNodes.Any(n => IsAction(n, ActionDetail.Penetrate));
-        if (actionNodes.Count > 0 && !hasPenetrate)
+        var skinName = ResolveSkinName(modInfoRoot, xElement);
+        var list2 = GetActionNodes(xElement).ToList();
+        var flag = list2.Any(n => IsAction(n, ActionDetail.Default));
+        if (list2.Count > 0 && !flag)
         {
-            issues.Add(new SkinCompatibilityIssue(
-                "SKIN_NO_PENETRATE",
-                "缺少 Penetrate 动作，回退兼容性较弱。",
-                SkinCompatibilitySeverity.Warning,
-                skinName,
-                ActionDetail.Penetrate.ToString()));
+            list.Add(new SkinCompatibilityIssue("SKIN_NO_DEFAULT", "缺少 Default 动作，导出后可能触发游戏 KeyNotFoundException。",
+                SkinCompatibilitySeverity.Blocking, skinName, ActionDetail.Default.ToString()));
         }
-
-        foreach (var actionNode in actionNodes)
+        var flag2 = list2.Any(n => IsAction(n, ActionDetail.Penetrate));
+        if (list2.Count > 0 && !flag2)
         {
-            var actionName = actionNode.Name.LocalName;
-            if (string.Equals(actionName, ActionDetail.Standing.ToString(), StringComparison.OrdinalIgnoreCase))
+            list.Add(new SkinCompatibilityIssue("SKIN_NO_PENETRATE", "缺少 Penetrate 动作，回退兼容性较弱。",
+                SkinCompatibilitySeverity.Warning, skinName, ActionDetail.Penetrate.ToString()));
+        }
+        foreach (var item in list2)
+        {
+            var localName = item.Name.LocalName;
+            if (string.Equals(localName, ActionDetail.Standing.ToString(), StringComparison.OrdinalIgnoreCase))
             {
-                issues.Add(new SkinCompatibilityIssue(
-                    "SKIN_STANDING_IGNORED",
-                    "存在 Standing 节点，加载端会忽略该动作。",
-                    SkinCompatibilitySeverity.Warning,
-                    skinName,
-                    actionName));
+                list.Add(new SkinCompatibilityIssue("SKIN_STANDING_IGNORED", "存在 Standing 节点，加载端会忽略该动作。",
+                    SkinCompatibilitySeverity.Warning, skinName, localName));
                 continue;
             }
-
-            if (string.Equals(actionName, ActionDetail.NONE.ToString(), StringComparison.OrdinalIgnoreCase))
+            var result = ActionDetail.NONE;
+            if (string.Equals(localName, result.ToString(), StringComparison.OrdinalIgnoreCase))
             {
-                issues.Add(new SkinCompatibilityIssue(
-                    "SKIN_NONE_IGNORED",
-                    "存在 NONE 节点，加载端会忽略该动作。",
-                    SkinCompatibilitySeverity.Warning,
-                    skinName,
-                    actionName));
-                continue;
+                list.Add(new SkinCompatibilityIssue("SKIN_NONE_IGNORED", "存在 NONE 节点，加载端会忽略该动作。",
+                    SkinCompatibilitySeverity.Warning, skinName, localName));
             }
-
-            if (!Enum.TryParse<ActionDetail>(actionName, true, out _))
+            else if (!Enum.TryParse(localName, true, out result))
             {
-                issues.Add(new SkinCompatibilityIssue(
-                    "SKIN_UNKNOWN_ACTION",
-                    "存在非 ActionDetail 的动作节点，当前主流程不会消费。",
-                    SkinCompatibilitySeverity.Warning,
-                    skinName,
-                    actionName));
+                list.Add(new SkinCompatibilityIssue("SKIN_UNKNOWN_ACTION", "存在非 ActionDetail 的动作节点，当前主流程不会消费。",
+                    SkinCompatibilitySeverity.Warning, skinName, localName));
             }
         }
-
-        return issues;
+        return list;
     }
 
     public static SkinFixResult ApplyFix(XElement modInfoRoot, SkinFixPolicy policy)
     {
-        var clothInfo = modInfoRoot.Element("ClothInfo");
-        var skinName = ResolveSkinName(modInfoRoot, clothInfo);
-        var result = new SkinFixResult(skinName);
-        if (clothInfo == null) return result;
-
-        var actionNodes = GetActionNodes(clothInfo).ToList();
-        if (actionNodes.Count == 0) return result;
-        if (actionNodes.Any(n => IsAction(n, ActionDetail.Default))) return result;
-
-        XElement? sourceNode = null;
-        string? sourceActionName = null;
-
+        var xElement = modInfoRoot.Element("ClothInfo");
+        var text = ResolveSkinName(modInfoRoot, xElement);
+        var skinFixResult = new SkinFixResult(text);
+        if (xElement == null)
+        {
+            return skinFixResult;
+        }
+        var list = GetActionNodes(xElement).ToList();
+        if (list.Count == 0)
+        {
+            return skinFixResult;
+        }
+        if (list.Any(n => IsAction(n, ActionDetail.Default)))
+        {
+            return skinFixResult;
+        }
+        XElement xElement2 = null;
+        string actionName = null;
         if (policy == SkinFixPolicy.PreferPenetrateForDefault)
         {
-            sourceNode = FindActionNode(clothInfo, ActionDetail.Penetrate.ToString());
-            sourceActionName = sourceNode?.Name.LocalName;
+            xElement2 = FindActionNode(xElement, ActionDetail.Penetrate.ToString());
+            actionName = xElement2?.Name.LocalName;
         }
-
-        if (sourceNode == null)
+        if (xElement2 == null)
         {
-            sourceNode = FindFirstCompatibleSource(clothInfo, out sourceActionName);
+            xElement2 = FindFirstCompatibleSource(xElement, out actionName);
         }
-
-        XElement defaultNode;
-        if (sourceNode != null)
+        XElement xElement3;
+        if (xElement2 != null)
         {
-            defaultNode = new XElement(ActionDetail.Default.ToString(), sourceNode.Attributes(), sourceNode.Nodes());
-            result.Messages.Add($"[{skinName}] 已从 {sourceActionName} 克隆 Default。");
+            xElement3 = new XElement(ActionDetail.Default.ToString(), xElement2.Attributes(), xElement2.Nodes());
+            skinFixResult.Messages.Add($"[{text}] 已从 {actionName} 克隆 Default。");
         }
         else
         {
-            defaultNode = CreateStandardActionNode(ActionDetail.Default.ToString());
-            result.Messages.Add($"[{skinName}] 已创建标准 Default 模板。");
+            xElement3 = CreateStandardActionNode(ActionDetail.Default.ToString());
+            skinFixResult.Messages.Add("[" + text + "] 已创建标准 Default 模板。");
         }
-
-        EnsureStandardActionShape(defaultNode);
-        clothInfo.Add(defaultNode);
-        result.HasChanges = true;
-
-        if (!string.IsNullOrWhiteSpace(sourceActionName) &&
-            !string.Equals(sourceActionName, ActionDetail.Default.ToString(), StringComparison.OrdinalIgnoreCase))
+        EnsureStandardActionShape(xElement3);
+        xElement.Add(xElement3);
+        skinFixResult.HasChanges = true;
+        if (!string.IsNullOrWhiteSpace(actionName) && !string.Equals(actionName, ActionDetail.Default.ToString(),
+                StringComparison.OrdinalIgnoreCase))
         {
-            CopyActionImages(modInfoRoot, sourceActionName, ActionDetail.Default.ToString(), result);
+            CopyActionImages(modInfoRoot, actionName, ActionDetail.Default.ToString(), skinFixResult);
         }
-
-        return result;
+        return skinFixResult;
     }
 
     public static XElement CreateStandardActionNode(string actionName)
     {
-        var node = new XElement(actionName);
-        EnsureStandardActionShape(node);
-        return node;
+        var xElement = new XElement(actionName);
+        EnsureStandardActionShape(xElement);
+        return xElement;
     }
 
-    private static IEnumerable<XElement> GetActionNodes(XElement clothInfo) =>
-        clothInfo.Elements().Where(node => !NonActionTags.Contains(node.Name.LocalName));
+    private static IEnumerable<XElement> GetActionNodes(XElement clothInfo) => from node in clothInfo.Elements()
+        where !NonActionTags.Contains(node.Name.LocalName)
+        select node;
 
-    private static bool IsAction(XElement node, ActionDetail actionDetail) =>
-        string.Equals(node.Name.LocalName, actionDetail.ToString(), StringComparison.OrdinalIgnoreCase);
+    private static bool IsAction(XElement node, ActionDetail actionDetail) => string.Equals(node.Name.LocalName,
+        actionDetail.ToString(), StringComparison.OrdinalIgnoreCase);
 
-    private static XElement? FindActionNode(XElement clothInfo, string actionName) =>
-        GetActionNodes(clothInfo).FirstOrDefault(n =>
+    private static XElement? FindActionNode(XElement clothInfo, string actionName)
+    {
+        return GetActionNodes(clothInfo).FirstOrDefault(n =>
             string.Equals(n.Name.LocalName, actionName, StringComparison.OrdinalIgnoreCase));
+    }
 
     private static XElement? FindFirstCompatibleSource(XElement clothInfo, out string? actionName)
     {
-        foreach (var action in PresetActions)
+        foreach (var presetAction in PresetActions)
         {
-            if (action == ActionDetail.Default) continue;
-            var node = FindActionNode(clothInfo, action.ToString());
-            if (node != null)
+            if (presetAction != ActionDetail.Default)
             {
-                actionName = node.Name.LocalName;
-                return node;
+                var xElement = FindActionNode(clothInfo, presetAction.ToString());
+                if (xElement != null)
+                {
+                    actionName = xElement.Name.LocalName;
+                    return xElement;
+                }
             }
         }
-
         actionName = null;
         return null;
     }
 
     private static void EnsureStandardActionShape(XElement actionNode)
     {
-        var directionNode = actionNode.Element("Direction");
-        if (directionNode == null)
+        var xElement = actionNode.Element("Direction");
+        if (xElement == null)
         {
             actionNode.AddFirst(new XElement("Direction", "Front"));
         }
-        else if (string.IsNullOrWhiteSpace(directionNode.Value))
+        else if (string.IsNullOrWhiteSpace(xElement.Value))
         {
-            directionNode.Value = "Front";
+            xElement.Value = "Front";
         }
-
         EnsureAttr(actionNode, "size_x", "512");
         EnsureAttr(actionNode, "size_y", "512");
         EnsureAttr(actionNode, "quality", "50");
-
-        var pivotNode = actionNode.Element("Pivot");
-        if (pivotNode == null)
+        var xElement2 = actionNode.Element("Pivot");
+        if (xElement2 == null)
         {
-            pivotNode = new XElement("Pivot");
-            actionNode.Add(pivotNode);
+            xElement2 = new XElement("Pivot");
+            actionNode.Add(xElement2);
         }
-
-        EnsureAttr(pivotNode, "pivot_x", "0");
-        EnsureAttr(pivotNode, "pivot_y", "0");
-
-        var headNode = actionNode.Element("Head");
-        if (headNode == null)
+        EnsureAttr(xElement2, "pivot_x", "0");
+        EnsureAttr(xElement2, "pivot_y", "0");
+        var xElement3 = actionNode.Element("Head");
+        if (xElement3 == null)
         {
-            headNode = new XElement("Head");
-            actionNode.Add(headNode);
+            xElement3 = new XElement("Head");
+            actionNode.Add(xElement3);
         }
-
-        EnsureAttr(headNode, "head_x", "0");
-        EnsureAttr(headNode, "head_y", "0");
-        EnsureAttr(headNode, "head_enable", "true");
+        EnsureAttr(xElement3, "head_x", "0");
+        EnsureAttr(xElement3, "head_y", "0");
+        EnsureAttr(xElement3, "head_enable", "true");
     }
 
     private static void EnsureAttr(XElement node, string attrName, string defaultValue)
     {
         if (node.Attribute(attrName) == null)
+        {
             node.SetAttributeValue(attrName, defaultValue);
+        }
     }
 
-    private static void CopyActionImages(XElement modInfoRoot, string sourceAction, string targetAction, SkinFixResult result)
+    private static void CopyActionImages(XElement modInfoRoot, string sourceAction, string targetAction,
+        SkinFixResult result)
     {
         try
         {
-            var modInfoPath = modInfoRoot.Annotation<FilePathAnnotation>()?.Path;
-            if (string.IsNullOrWhiteSpace(modInfoPath)) return;
-
-            var skinDir = Path.GetDirectoryName(modInfoPath);
-            if (string.IsNullOrWhiteSpace(skinDir)) return;
-
-            var clothCustomDir = Path.Combine(skinDir, "ClothCustom");
-            if (!Directory.Exists(clothCustomDir)) return;
-
-            foreach (var suffix in CopyImageSuffixes)
+            var text = modInfoRoot.Annotation<FilePathAnnotation>()?.Path;
+            if (string.IsNullOrWhiteSpace(text))
             {
-                var sourcePath = Path.Combine(clothCustomDir, $"{sourceAction}{suffix}.png");
-                if (!File.Exists(sourcePath)) continue;
-
-                var targetPath = Path.Combine(clothCustomDir, $"{targetAction}{suffix}.png");
-                File.Copy(sourcePath, targetPath, true);
-                result.HasChanges = true;
-                result.Messages.Add(
-                    $"[{result.SkinName}] 图片迁移: {Path.GetFileName(sourcePath)} -> {Path.GetFileName(targetPath)}");
+                return;
+            }
+            var directoryName = Path.GetDirectoryName(text);
+            if (string.IsNullOrWhiteSpace(directoryName))
+            {
+                return;
+            }
+            var text2 = Path.Combine(directoryName, "ClothCustom");
+            if (!Directory.Exists(text2))
+            {
+                return;
+            }
+            var copyImageSuffixes = CopyImageSuffixes;
+            foreach (var text3 in copyImageSuffixes)
+            {
+                var text4 = Path.Combine(text2, sourceAction + text3 + ".png");
+                if (File.Exists(text4))
+                {
+                    var text5 = Path.Combine(text2, targetAction + text3 + ".png");
+                    File.Copy(text4, text5, true);
+                    result.HasChanges = true;
+                    result.Messages.Add(
+                        $"[{result.SkinName}] 图片迁移: {Path.GetFileName(text4)} -> {Path.GetFileName(text5)}");
+                }
             }
         }
         catch (Exception ex)
         {
-            result.Errors.Add($"[{result.SkinName}] 迁移动作图片失败: {ex.Message}");
+            result.Errors.Add("[" + result.SkinName + "] 迁移动作图片失败: " + ex.Message);
         }
     }
 
     private static string ResolveSkinName(XElement modInfoRoot, XElement? clothInfo)
     {
-        var fromXml = clothInfo?.Element("Name")?.Value?.Trim();
-        if (!string.IsNullOrWhiteSpace(fromXml))
-            return fromXml;
-
-        var docPath = modInfoRoot.Annotation<FilePathAnnotation>()?.Path;
-        if (!string.IsNullOrWhiteSpace(docPath))
+        var text = clothInfo?.Element("Name")?.Value?.Trim();
+        if (!string.IsNullOrWhiteSpace(text))
         {
-            var folder = Path.GetDirectoryName(docPath);
-            if (!string.IsNullOrWhiteSpace(folder))
-                return Path.GetFileName(folder);
+            return text;
         }
-
+        var text2 = modInfoRoot.Annotation<FilePathAnnotation>()?.Path;
+        if (!string.IsNullOrWhiteSpace(text2))
+        {
+            var directoryName = Path.GetDirectoryName(text2);
+            if (!string.IsNullOrWhiteSpace(directoryName))
+            {
+                return Path.GetFileName(directoryName);
+            }
+        }
         return "UnknownSkin";
     }
 }

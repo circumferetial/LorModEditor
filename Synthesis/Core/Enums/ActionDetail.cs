@@ -1,8 +1,5 @@
-using JetBrains.Annotations;
-
 namespace Synthesis.Core.Enums;
 
-[UsedImplicitly(ImplicitUseTargetFlags.WithMembers)]
 public enum ActionDetail
 {
     Default,

@@ -1,57 +1,68 @@
-using System.ComponentModel;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Threading;
+using Synthesis.Core.Tools;
 
 namespace Synthesis.Feature.Passive;
 
-public partial class PassiveEditorView : IRegionMemberLifetime
+public partial class PassiveEditorView : UserControl, IRegionMemberLifetime
 {
+    private readonly DispatcherTimer _searchTimer = new()
+    {
+        Interval = TimeSpan.FromMilliseconds(400)
+    };
+
     public PassiveEditorView()
     {
         InitializeComponent();
-
-        // 监听 Loaded 事件，确保数据源绑定后立即排序
-        Loaded += (_, _) => ApplyFilterAndSort();
+        Loaded += (_, _) => ApplySorting();
+        _searchTimer.Tick += (_, _) =>
+        {
+            _searchTimer.Stop();
+            ApplyFilter();
+        };
     }
 
-    // 保持视图状态，切回来时还在原来的位置
     public bool KeepAlive => true;
 
-    // =============================================================
-    //  纯 UI 逻辑：列表排序与过滤
-    // =============================================================
+    private void ApplySorting()
+    {
+        if (PassiveListBox.ItemsSource != null)
+        {
+            ViewSortHelper.ApplyModFirstNaturalSort<UnifiedPassive>(PassiveListBox.ItemsSource, x => x.Id);
+        }
+    }
+
+    private void ApplyFilter()
+    {
+        if (PassiveListBox.ItemsSource == null)
+        {
+            return;
+        }
+
+        var view = CollectionViewSource.GetDefaultView(PassiveListBox.ItemsSource);
+        if (view == null)
+        {
+            return;
+        }
+
+        var filterText = SearchBox.Text;
+        view.Filter = obj =>
+        {
+            if (string.IsNullOrEmpty(filterText))
+            {
+                return true;
+            }
+
+            return obj is UnifiedPassive passive &&
+                   (passive.Id.Contains(filterText, StringComparison.OrdinalIgnoreCase) ||
+                    passive.Name.Contains(filterText, StringComparison.OrdinalIgnoreCase));
+        };
+    }
 
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
     {
-        ApplyFilterAndSort();
-    }
-
-    private void ApplyFilterAndSort()
-    {
-        if (PassiveListBox.ItemsSource == null) return;
-
-        var view = CollectionViewSource.GetDefaultView(PassiveListBox.ItemsSource);
-        if (view == null) return;
-
-        var filterText = SearchBox.Text;
-
-        // 1. 过滤器
-        view.Filter = obj =>
-        {
-            if (string.IsNullOrEmpty(filterText)) return true;
-
-            if (obj is not UnifiedPassive item) return false;
-            // 搜索 ID 和 名称 (忽略大小写)
-            var matchId = item.Id.Contains(filterText, StringComparison.OrdinalIgnoreCase);
-            var matchName = item.Name.Contains(filterText, StringComparison.OrdinalIgnoreCase);
-            return matchId || matchName;
-        };
-
-        // 2. 排序器 (Mod 优先 + ID 排序)
-        view.SortDescriptions.Clear();
-        view.SortDescriptions.Add(new SortDescription("IsVanilla", ListSortDirection.Ascending));
-        view.SortDescriptions.Add(new SortDescription("Id", ListSortDirection.Ascending));
-
-        view.Refresh();
+        _searchTimer.Stop();
+        _searchTimer.Start();
     }
 }

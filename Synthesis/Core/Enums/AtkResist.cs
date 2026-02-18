@@ -1,6 +1,5 @@
 namespace Synthesis.Core.Enums;
 
-// 抗性
 public enum AtkResist
 {
     Weak,

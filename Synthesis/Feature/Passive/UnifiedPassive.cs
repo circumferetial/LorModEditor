@@ -8,10 +8,13 @@ namespace Synthesis.Feature.Passive;
 public class UnifiedPassive : XWrapper
 {
     private readonly XElement _data;
+
     private readonly XElement? _textParent;
+
     private XElement? _text;
 
-    public UnifiedPassive(XElement data, XElement? text, XElement? textParent) : base(data)
+    public UnifiedPassive(XElement data, XElement? text, XElement? textParent)
+        : base(data)
     {
         _textParent = textParent;
         _data = data;
@@ -27,8 +30,11 @@ public class UnifiedPassive : XWrapper
         set
         {
             SetAttr(_data, "ID", value);
-            if (_text != null && !IsVanilla) SetAttr(_text, "ID", value);
-            OnPropertyChanged(nameof(DisplayName));
+            if (_text != null && !IsVanilla)
+            {
+                SetAttr(_text, "ID", value);
+            }
+            OnPropertyChanged("DisplayName");
         }
     }
 
@@ -38,7 +44,6 @@ public class UnifiedPassive : XWrapper
         set => SetInt(_data, "InnerType", value);
     }
 
-    // 强类型
     public int Cost
     {
         get => GetInt(_data, "Cost", 1);
@@ -68,10 +73,15 @@ public class UnifiedPassive : XWrapper
         get => _text?.Element("Name")?.Value ?? "未翻译";
         set
         {
-            if (IsVanilla) return;
-            EnsureTextNode();
-            if (_text != null) SetElementValue(_text, "Name", value);
-            OnPropertyChanged(nameof(DisplayName));
+            if (!IsVanilla)
+            {
+                EnsureTextNode();
+                if (_text != null)
+                {
+                    SetElementValue(_text, "Name", value);
+                }
+                OnPropertyChanged("DisplayName");
+            }
         }
     }
 
@@ -80,24 +90,33 @@ public class UnifiedPassive : XWrapper
         get => _text?.Element("Desc")?.Value ?? "";
         set
         {
-            if (IsVanilla) return;
-            EnsureTextNode();
-            if (_text != null) SetElementValue(_text, "Desc", value);
+            if (!IsVanilla)
+            {
+                EnsureTextNode();
+                if (_text != null)
+                {
+                    SetElementValue(_text, "Desc", value);
+                }
+            }
         }
     }
 
     private void EnsureTextNode()
     {
-        if (_text != null || _textParent == null || IsVanilla) return;
-        _text = new XElement("PassiveDesc", new XAttribute("ID", Id), new XElement("Name", "New Passive"),
-            new XElement("Desc", "..."));
-        _textParent.Add(_text);
+        if (_text == null && _textParent != null && !IsVanilla)
+        {
+            _text = new XElement("PassiveDesc", new XAttribute("ID", Id), new XElement("Name", "New Passive"),
+                new XElement("Desc", "..."));
+            _textParent.Add(_text);
+        }
     }
 
     public void DeleteXml()
     {
-        if (IsVanilla) return;
-        _data.Remove();
-        _text?.Remove();
+        if (!IsVanilla)
+        {
+            _data.Remove();
+            _text?.Remove();
+        }
     }
 }

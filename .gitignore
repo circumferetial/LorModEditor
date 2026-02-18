@@ -1,0 +1,19 @@
+# Ignore IDE and build artifacts
+.idea/
+.vs/
+
+# Build outputs
+**/bin/
+**/obj/
+
+# Rider and ReSharper
+_ReSharper*/
+*.DotSettings.user
+
+# Logs and local artifacts
+*.log
+*.tmp
+*.cache
+
+# Generated quality reports (keep latest tracked manually if needed)
+docs/quality/reports/*.tmp

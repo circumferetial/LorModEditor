@@ -1,6 +1,8 @@
-﻿namespace Synthesis.Feature.MainWindow;
+using System.Windows;
 
-public partial class MainWindow
+namespace Synthesis.Feature.MainWindow;
+
+public partial class MainWindow : Window
 {
     public MainWindow()
     {

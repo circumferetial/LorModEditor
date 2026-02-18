@@ -1,6 +1,8 @@
+using System.Windows.Controls;
+
 namespace Synthesis.Feature.Setting;
 
-public partial class SettingsView : IRegionMemberLifetime
+public partial class SettingsView : UserControl, IRegionMemberLifetime
 {
     public SettingsView()
     {

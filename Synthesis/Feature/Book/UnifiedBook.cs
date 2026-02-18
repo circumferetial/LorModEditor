@@ -5,18 +5,20 @@ using Synthesis.Core.Abstraction;
 using Synthesis.Core.Attributes;
 using Synthesis.Core.Enums;
 
-// 确保引用了 Enums
-
 namespace Synthesis.Feature.Book;
 
 public class UnifiedBook : XWrapper
 {
     private static readonly char[] separator = ['\r', '\n'];
+
     private readonly XElement _data;
+
     private readonly XElement? _textParent;
+
     private XElement? _text;
 
-    public UnifiedBook(XElement data, XElement? text, XElement? textParent) : base(data)
+    public UnifiedBook(XElement data, XElement? text, XElement? textParent)
+        : base(data)
     {
         _data = data;
         _text = text;
@@ -28,23 +30,21 @@ public class UnifiedBook : XWrapper
 
     public string SkinType
     {
-        // 默认为 Lor
         get => GetElementValue(_data, "CharacterSkinType", "Lor");
         set => SetElementValue(_data, "CharacterSkinType", value);
     }
 
-    // 懒加载 EquipEffect 节点
     private XElement EffectNode
     {
         get
         {
-            var node = _data.Element("EquipEffect");
-            if (node == null)
+            var xElement = _data.Element("EquipEffect");
+            if (xElement == null)
             {
-                node = new XElement("EquipEffect");
-                _data.Add(node);
+                xElement = new XElement("EquipEffect");
+                _data.Add(xElement);
             }
-            return node;
+            return xElement;
         }
     }
 
@@ -54,8 +54,6 @@ public class UnifiedBook : XWrapper
         set => SetElementValue(_data, "BookIcon", value);
     }
 
-    // 【新增】CharacterSkin (默认值: Liwei 或 Default)
-    // 默认皮肤通常是 "Default" (穿核心书页外观)，或者你可以指定一个默认值
     public string CharacterSkin
     {
         get => GetElementValue(_data, "CharacterSkin", "Liwei");
@@ -64,26 +62,21 @@ public class UnifiedBook : XWrapper
 
     [NoAutoInit] public string DisplayName => $"{GlobalId} {Name}";
 
-    // --- ID (LorId) ---
-    // 注意：这里的 ID 实际上是指向自身的 GlobalId，而不是引用别人的 ID
-    // 虽然用 LorId 没问题，但要注意 BookDesc 里的同步逻辑
     public string Id
     {
         get => GetAttr(_data, "ID");
         set
         {
             SetAttr(_data, "ID", value);
-            // 同步修改翻译ID (BookDesc 用的是 BookID 属性)
             if (_text != null && !IsVanilla)
             {
-                SetAttr(_text, "BookID", value);// 只需要存数字ID
+                SetAttr(_text, "BookID", value);
             }
-            OnPropertyChanged(nameof(DisplayName));
-            OnPropertyChanged(nameof(GlobalId));
+            OnPropertyChanged("DisplayName");
+            OnPropertyChanged("GlobalId");
         }
     }
 
-    // 快捷获取强类型 LorId (用于绑定 ComboBox SelectedValue)
     public LorId IdStruct => GlobalId;
 
     public string Name
@@ -91,14 +84,18 @@ public class UnifiedBook : XWrapper
         get => _text?.Element("BookName")?.Value ?? "未翻译";
         set
         {
-            if (IsVanilla) return;
-            EnsureTextNode();
-            if (_text != null) SetElementValue(_text, "BookName", value);
-            OnPropertyChanged(nameof(DisplayName));
+            if (!IsVanilla)
+            {
+                EnsureTextNode();
+                if (_text != null)
+                {
+                    SetElementValue(_text, "BookName", value);
+                }
+                OnPropertyChanged("DisplayName");
+            }
         }
     }
 
-    // --- 基础属性 --- 
     public int Episode
     {
         get => GetInt(_data, "Episode");
@@ -117,14 +114,12 @@ public class UnifiedBook : XWrapper
         set => SetEnum(_data, "RangeType", value);
     }
 
-    // Chapter 限制 1-7
     public int Chapter
     {
         get => GetInt(_data, "Chapter", 1);
         set => SetInt(_data, "Chapter", Math.Clamp(value, 1, 7));
     }
 
-    // --- 战斗数值 (强类型 int) ---
     public int HP
     {
         get => GetInt(EffectNode, "HP", 10);
@@ -147,7 +142,7 @@ public class UnifiedBook : XWrapper
     {
         get => GetInt(EffectNode, "Speed", 1);
         set => SetInt(EffectNode, "Speed", value);
-    }// MaxSpeed
+    }
 
     public int StartPlayPoint
     {
@@ -161,7 +156,6 @@ public class UnifiedBook : XWrapper
         set => SetInt(EffectNode, "MaxPlayPoint", value);
     }
 
-    // --- 抗性 (强类型 Enum) ---
     public AtkResist SResist
     {
         get => GetEnum(EffectNode, "SResist", AtkResist.Normal);
@@ -198,126 +192,154 @@ public class UnifiedBook : XWrapper
         set => SetEnum(EffectNode, "HBResist", value);
     }
 
-    // --- 书籍故事 ---
     public string BookStory
     {
         get
         {
-            var textList = _text?.Element("TextList");
-            if (textList == null) return "";
-            var paragraphs = textList.Elements("Desc").Select(e => e.Value);
-            return string.Join(Environment.NewLine, paragraphs);
+            var xElement = _text?.Element("TextList");
+            if (xElement == null)
+            {
+                return "";
+            }
+            IEnumerable<string> values = from e in xElement.Elements("Desc")
+                select e.Value;
+            return string.Join(Environment.NewLine, values);
         }
         set
         {
-            if (IsVanilla) return;
+            if (IsVanilla)
+            {
+                return;
+            }
             EnsureTextNode();
             if (_text != null)
             {
-                var textList = _text.Element("TextList");
-                if (textList == null)
+                var xElement = _text.Element("TextList");
+                if (xElement == null)
                 {
-                    textList = new XElement("TextList");
-                    _text.Add(textList);
+                    xElement = new XElement("TextList");
+                    _text.Add(xElement);
                 }
-
-                textList.RemoveAll();
+                xElement.RemoveAll();
                 if (!string.IsNullOrEmpty(value))
                 {
-                    var lines = value.Split(separator, StringSplitOptions.RemoveEmptyEntries);
-                    foreach (var line in lines) textList.Add(new XElement("Desc", line));
+                    var array = value.Split(separator, StringSplitOptions.RemoveEmptyEntries);
+                    foreach (var content in array)
+                    {
+                        xElement.Add(new XElement("Desc", content));
+                    }
                 }
             }
             OnPropertyChanged();
         }
     }
 
-    // --- 集合 ---
-    public ObservableCollection<LorId> Passives { get; } = new();
-    public ObservableCollection<LorId> OnlyCards { get; } = new();
+    public ObservableCollection<LorId> Passives { get; } = [];
+
+    public ObservableCollection<LorId> OnlyCards { get; } = [];
 
     private void LoadPassives()
     {
         Passives.Clear();
-        if (_data.Element("EquipEffect") == null) return;
-        foreach (var p in EffectNode.Elements("Passive"))
-            Passives.Add(LorId.ParseXmlReference(p, GlobalId.PackageId));
+        if (_data.Element("EquipEffect") == null)
+        {
+            return;
+        }
+        foreach (var item in EffectNode.Elements("Passive"))
+        {
+            Passives.Add(LorId.ParseXmlReference(item, GlobalId.PackageId));
+        }
     }
 
     private void LoadOnlyCards()
     {
         OnlyCards.Clear();
-        if (_data.Element("EquipEffect") == null) return;
-        foreach (var c in EffectNode.Elements("OnlyCard"))
-            OnlyCards.Add(LorId.ParseXmlReference(c, GlobalId.PackageId));
+        if (_data.Element("EquipEffect") == null)
+        {
+            return;
+        }
+        foreach (var item in EffectNode.Elements("OnlyCard"))
+        {
+            OnlyCards.Add(LorId.ParseXmlReference(item, GlobalId.PackageId));
+        }
     }
 
     public void AddPassive(LorId pid)
     {
-        if (IsVanilla) return;
-        var node = new XElement("Passive", pid.ItemId);
-        if (pid.PackageId != GlobalId.PackageId) node.SetAttributeValue("Pid", pid.PackageId);
-        EffectNode.Add(node);
-        Passives.Add(pid);
+        if (!IsVanilla)
+        {
+            var xElement = new XElement("Passive", pid.ItemId);
+            if (pid.PackageId != GlobalId.PackageId)
+            {
+                xElement.SetAttributeValue("Pid", pid.PackageId);
+            }
+            EffectNode.Add(xElement);
+            Passives.Add(pid);
+        }
     }
 
     public void RemovePassive(LorId pid)
     {
-        if (IsVanilla) return;
-        var node = EffectNode.Elements("Passive").FirstOrDefault(x =>
-            (x.Attribute("Pid")?.Value ?? GlobalId.PackageId) == pid.PackageId && x.Value == pid.ItemId);
-        node?.Remove();
-        Passives.Remove(pid);
+        if (!IsVanilla)
+        {
+            EffectNode.Elements("Passive").FirstOrDefault(x =>
+                (x.Attribute("Pid")?.Value ?? GlobalId.PackageId) == pid.PackageId && x.Value == pid.ItemId)?.Remove();
+            Passives.Remove(pid);
+        }
     }
 
     public void AddOnlyCard(LorId cid)
     {
-        if (IsVanilla) return;
-        var node = new XElement("OnlyCard", cid.ItemId);
-        if (cid.PackageId != GlobalId.PackageId) node.SetAttributeValue("Pid", cid.PackageId);
-        EffectNode.Add(node);
-        OnlyCards.Add(cid);
+        if (!IsVanilla)
+        {
+            var xElement = new XElement("OnlyCard", cid.ItemId);
+            if (cid.PackageId != GlobalId.PackageId)
+            {
+                xElement.SetAttributeValue("Pid", cid.PackageId);
+            }
+            EffectNode.Add(xElement);
+            OnlyCards.Add(cid);
+        }
     }
 
     public void RemoveOnlyCard(LorId cid)
     {
-        if (IsVanilla) return;
-        var node = EffectNode.Elements("OnlyCard").FirstOrDefault(x =>
-            (x.Attribute("Pid")?.Value ?? GlobalId.PackageId) == cid.PackageId && x.Value == cid.ItemId);
-        node?.Remove();
-        OnlyCards.Remove(cid);
+        if (!IsVanilla)
+        {
+            EffectNode.Elements("OnlyCard").FirstOrDefault(x =>
+                (x.Attribute("Pid")?.Value ?? GlobalId.PackageId) == cid.PackageId && x.Value == cid.ItemId)?.Remove();
+            OnlyCards.Remove(cid);
+        }
     }
-
-// Wrappers/UnifiedBook.cs
 
     private void EnsureTextNode()
     {
-        if (_text != null || _textParent == null || IsVanilla) return;
-
-        var realParent = _textParent;
-
-        // 【核心修复】如果父节点是 Root，且没到 bookDescList 这一层，就补上
+        if (_text != null || _textParent == null || IsVanilla)
+        {
+            return;
+        }
+        var xElement = _textParent;
         if (_textParent.Name.LocalName == "BookDescRoot")
         {
-            var listNode = _textParent.Element("bookDescList");
-            if (listNode == null)
+            var xElement2 = _textParent.Element("bookDescList");
+            if (xElement2 == null)
             {
-                listNode = new XElement("bookDescList");
-                _textParent.Add(listNode);
+                xElement2 = new XElement("bookDescList");
+                _textParent.Add(xElement2);
             }
-            realParent = listNode;
+            xElement = xElement2;
         }
-
         _text = new XElement("BookDesc", new XAttribute("BookID", Id));
         _text.Add(new XElement("BookName", "New Book"));
-
-        realParent.Add(_text);
+        xElement.Add(_text);
     }
 
     public void DeleteXml()
     {
-        if (IsVanilla) return;
-        _data.Remove();
-        _text?.Remove();
+        if (!IsVanilla)
+        {
+            _data.Remove();
+            _text?.Remove();
+        }
     }
 }

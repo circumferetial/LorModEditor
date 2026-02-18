@@ -1,126 +1,178 @@
-using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Synthesis.Core;
+using Synthesis.Core.Tools;
 using Synthesis.Feature.DropBook;
 
 namespace Synthesis.Feature.Stage;
 
-public partial class StageEditorView : IRegionMemberLifetime
+public partial class StageEditorView : UserControl, IRegionMemberLifetime
 {
+    private readonly DispatcherTimer _invBookSearchTimer = new()
+    {
+        Interval = TimeSpan.FromMilliseconds(400)
+    };
+
+    private readonly DispatcherTimer _mainSearchTimer = new()
+    {
+        Interval = TimeSpan.FromMilliseconds(400)
+    };
+
     public StageEditorView()
     {
         InitializeComponent();
-        Loaded += (_, _) => ApplyFilterAndSort();
-
-        // 邀请函书籍搜索
-        InvBookCombo.AddHandler(TextBoxBase.TextChangedEvent,
-            new TextChangedEventHandler(Combo_TextChanged));
+        Loaded += (_, _) => ApplySorting();
+        _mainSearchTimer.Tick += (_, _) =>
+        {
+            _mainSearchTimer.Stop();
+            ApplyMainFilter();
+        };
+        _invBookSearchTimer.Tick += (_, _) =>
+        {
+            _invBookSearchTimer.Stop();
+            ApplyInvBookFilter();
+        };
+        InvBookCombo.AddHandler(TextBoxBase.TextChangedEvent, new TextChangedEventHandler(InvBookCombo_TextChanged));
     }
 
     private StageEditorViewModel? ViewModel => DataContext as StageEditorViewModel;
+
     public bool KeepAlive => true;
 
-    private void SearchBox_TextChanged(object sender, TextChangedEventArgs e) => ApplyFilterAndSort();
-
-    private void ApplyFilterAndSort()
+    private void ApplySorting()
     {
-        if (StageList.ItemsSource == null) return;
+        if (StageList.ItemsSource != null)
+        {
+            ViewSortHelper.ApplyModFirstNaturalSort<UnifiedStage>(StageList.ItemsSource, x => x.Id);
+        }
+    }
+
+    private void ApplyMainFilter()
+    {
+        if (StageList.ItemsSource == null)
+        {
+            return;
+        }
+
         var view = CollectionViewSource.GetDefaultView(StageList.ItemsSource);
-        if (view == null) return;
-        view.SortDescriptions.Clear();
-        view.SortDescriptions.Add(new SortDescription("IsVanilla", ListSortDirection.Ascending));
-        view.SortDescriptions.Add(new SortDescription("Id", ListSortDirection.Ascending));
+        if (view == null)
+        {
+            return;
+        }
 
         var filterText = SearchBox.Text;
         view.Filter = obj =>
         {
-            if (string.IsNullOrEmpty(filterText)) return true;
-            if (obj is UnifiedStage item)
-                return item.Id.Contains(filterText, StringComparison.OrdinalIgnoreCase) ||
-                       item.Name.Contains(filterText, StringComparison.OrdinalIgnoreCase);
-            return false;
+            if (string.IsNullOrEmpty(filterText))
+            {
+                return true;
+            }
+
+            return obj is UnifiedStage stage &&
+                   (stage.Id.Contains(filterText, StringComparison.OrdinalIgnoreCase) ||
+                    stage.Name.Contains(filterText, StringComparison.OrdinalIgnoreCase));
         };
+    }
+
+    private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        _mainSearchTimer.Stop();
+        _mainSearchTimer.Start();
+    }
+
+    private void InvBookCombo_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        _invBookSearchTimer.Stop();
+        _invBookSearchTimer.Start();
+    }
+
+    private void ApplyInvBookFilter()
+    {
+        var filterText = InvBookCombo.Text;
+        var view = CollectionViewSource.GetDefaultView(InvBookCombo.ItemsSource);
+        if (view == null)
+        {
+            return;
+        }
+
+        view.Filter = obj =>
+        {
+            if (string.IsNullOrEmpty(filterText))
+            {
+                return true;
+            }
+
+            return obj is UnifiedDropBook book &&
+                   book.DisplayName.Contains(filterText, StringComparison.OrdinalIgnoreCase);
+        };
+
+        if (InvBookCombo.IsKeyboardFocusWithin && !InvBookCombo.IsDropDownOpen)
+        {
+            InvBookCombo.IsDropDownOpen = true;
+        }
     }
 
     private void StageList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        EditPanel.Visibility = StageList.SelectedItem != null ? Visibility.Visible : Visibility.Hidden;
+        EditPanel.Visibility = StageList.SelectedItem == null ? Visibility.Hidden : Visibility.Visible;
     }
 
     private void RemoveWave_Click(object sender, RoutedEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is UnifiedWave wave)
+        {
             ViewModel?.RemoveWaveCommand.Execute(wave);
+        }
     }
 
-    // --- 敌人操作 ---
     private void AddUnit_Click(object sender, RoutedEventArgs e)
     {
-        var btn = sender as Button;
-        var dockPanel = btn?.Parent as DockPanel;
-        var comboBox = dockPanel?.Children.OfType<ComboBox>().FirstOrDefault();
-
-        var wave = btn?.DataContext as UnifiedWave;
-        var enemyId = comboBox?.SelectedValue;
-
-        if (wave != null && enemyId is LorId id) wave.AddUnit(id);
+        var button = sender as Button;
+        var combo = (button?.Parent as DockPanel)?.Children.OfType<ComboBox>().FirstOrDefault();
+        var wave = button?.DataContext as UnifiedWave;
+        if (wave != null && combo?.SelectedValue is LorId unitId)
+        {
+            wave.AddUnit(unitId);
+        }
     }
 
     private void RemoveUnit_Click(object sender, RoutedEventArgs e)
     {
-        var btn = sender as Button;
-        if (btn?.DataContext is not LorId unitId) return;
-        // 【核心修复】不依赖 Tag，直接在视觉树里往上找
-        // 目标：找到包裹这个按钮的 DataTemplate 对应的数据对象 (UnifiedWave)
-
-        var wave = FindParentDataContext<UnifiedWave>(btn);
-
-        wave?.RemoveUnit(unitId);
+        if (sender is Button { DataContext: LorId unitId } button)
+        {
+            FindParentDataContext<UnifiedWave>(button)?.RemoveUnit(unitId);
+        }
     }
 
-// 通用的查找辅助方法
     private static T? FindParentDataContext<T>(DependencyObject child) where T : class
     {
-        var parent = VisualTreeHelper.GetParent(child);
-        while (parent != null)
+        for (var parent = VisualTreeHelper.GetParent(child);
+             parent != null;
+             parent = VisualTreeHelper.GetParent(parent))
         {
-            if (parent is FrameworkElement { DataContext: T target })
+            if (parent is FrameworkElement { DataContext: T context })
             {
-                return target;
+                return context;
             }
-            parent = VisualTreeHelper.GetParent(parent);
         }
+
         return null;
     }
 
-    // --- 邀请函操作 ---
-    private void AddInvBook_Click(object sender, RoutedEventArgs e) => ViewModel?.AddInvBookCommand.Execute();
+    private void AddInvBook_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel?.AddInvBookCommand.Execute();
+    }
 
     private void RemoveInvBook_Click(object sender, RoutedEventArgs e)
     {
-        if ((sender as FrameworkElement)?.DataContext is LorId bookId)
-            ViewModel?.RemoveInvBookCommand.Execute(bookId);
-    }
-
-    // --- 下拉框过滤 ---
-    private static void Combo_TextChanged(object sender, TextChangedEventArgs e)
-    {
-        var comboBox = sender as ComboBox;
-        if (e.OriginalSource is not TextBox textBox || comboBox == null) return;
-        var filterText = textBox.Text;
-        var view = CollectionViewSource.GetDefaultView(comboBox.ItemsSource);
-        if (view == null) return;
-        view.Filter = obj =>
+        if ((sender as FrameworkElement)?.DataContext is LorId id)
         {
-            if (string.IsNullOrEmpty(filterText)) return true;
-            // 对 UnifiedDropBook 过滤
-            if (obj is UnifiedDropBook b) return b.DisplayName.Contains(filterText, StringComparison.OrdinalIgnoreCase);
-            return false;
-        };
-        if (comboBox is { IsKeyboardFocusWithin: true, IsDropDownOpen: false }) comboBox.IsDropDownOpen = true;
+            ViewModel?.RemoveInvBookCommand.Execute(id);
+        }
     }
 }

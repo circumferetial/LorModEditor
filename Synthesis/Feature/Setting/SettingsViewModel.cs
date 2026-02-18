@@ -4,32 +4,31 @@ using Microsoft.Win32;
 using Synthesis.Core;
 using Synthesis.Core.Log;
 
-// 【关键】使用 WPF 原生对话框命名空间
-
 namespace Synthesis.Feature.Setting;
 
 public class SettingsViewModel : BindableBase
 {
     private readonly ProjectManager _manager;
+    private bool _isReloading;
 
     public SettingsViewModel(ProjectManager manager)
     {
         _manager = manager;
-
-        // 直接引用单例
         Config = EditorConfig.Instance;
-
         SaveCommand = new DelegateCommand(Save);
-        ReloadCommand = new DelegateCommand(Reload);
+        ReloadCommand = new DelegateCommand(Reload, CanReload);
         BrowseCommand = new DelegateCommand(Browse);
     }
 
-    // 绑定源
     public EditorConfig Config { get; }
 
     public DelegateCommand SaveCommand { get; }
+
     public DelegateCommand ReloadCommand { get; }
+
     public DelegateCommand BrowseCommand { get; }
+
+    private bool CanReload() => !_isReloading;
 
     private void Save()
     {
@@ -39,11 +38,18 @@ public class SettingsViewModel : BindableBase
 
     private async void Reload()
     {
+        if (_isReloading)
+        {
+            return;
+        }
+
+        _isReloading = true;
+        ReloadCommand.RaiseCanExecuteChanged();
+
         try
         {
             if (!string.IsNullOrEmpty(Config.LastProjectPath) && File.Exists(Config.LastProjectPath))
             {
-                // 保存当前配置再重载
                 Config.Save();
                 await _manager.OpenProject(Config.LastProjectPath);
             }
@@ -52,31 +58,31 @@ public class SettingsViewModel : BindableBase
                 MessageBox.Show("未找到上次打开的项目路径，请使用“打开项目”按钮手动加载。", "提示");
             }
         }
-        catch (Exception e)
+        catch (Exception ex)
         {
-            Logger.Error("Error: ", e);
+            Logger.Error("Error: ", ex);
+        }
+        finally
+        {
+            _isReloading = false;
+            ReloadCommand.RaiseCanExecuteChanged();
         }
     }
 
     private void Browse()
     {
-        // 【关键修改】使用 WPF 原生文件夹选择器 (仅限 .NET Core 3.1 / .NET 5+ / .NET 8)
-        var dialog = new OpenFolderDialog
+        var openFolderDialog = new OpenFolderDialog
         {
             Title = "选择 BaseMod 文件夹 (LibraryOfRuina_Data/Managed/BaseMod)",
             Multiselect = false
         };
-
-        // 如果已经有路径，尝试设置初始目录
         if (!string.IsNullOrEmpty(Config.BaseModPath))
         {
-            dialog.InitialDirectory = Config.BaseModPath;
+            openFolderDialog.InitialDirectory = Config.BaseModPath;
         }
-
-        if (dialog.ShowDialog() == true)
+        if (openFolderDialog.ShowDialog() == true)
         {
-            // 因为 Config 继承了 BindableBase，这里赋值后，界面会自动更新
-            Config.BaseModPath = dialog.FolderName;
+            Config.BaseModPath = openFolderDialog.FolderName;
         }
     }
 }

@@ -8,7 +8,8 @@ public class UnifiedAbility : XWrapper
 {
     private static readonly char[] separator = ['\r', '\n'];
 
-    public UnifiedAbility(XElement element) : base(element)
+    public UnifiedAbility(XElement element)
+        : base(element)
     {
         InitDefaults();
     }
@@ -19,7 +20,7 @@ public class UnifiedAbility : XWrapper
         set
         {
             SetAttr(Element, "ID", value);
-            OnPropertyChanged(nameof(DisplayName));
+            OnPropertyChanged("DisplayName");
         }
     }
 
@@ -27,38 +28,39 @@ public class UnifiedAbility : XWrapper
     {
         get
         {
-            // 读取：合并所有 Desc 标签，用换行符连接
-            var lines = Element.Elements("Desc").Select(e => e.Value);
-            return string.Join(Environment.NewLine, lines);
+            IEnumerable<string> values = from e in Element.Elements("Desc")
+                select e.Value;
+            return string.Join(Environment.NewLine, values);
         }
         set
         {
-            if (IsVanilla) return;
-
-            // 写入：先清空，再分割字符串，创建多个 Desc 标签
+            if (IsVanilla)
+            {
+                return;
+            }
             Element.Elements("Desc").Remove();
-
             if (!string.IsNullOrEmpty(value))
             {
-                var lines = value.Split(separator, StringSplitOptions.RemoveEmptyEntries);
-                foreach (var line in lines)
+                var array = value.Split(separator, StringSplitOptions.RemoveEmptyEntries);
+                foreach (var content in array)
                 {
-                    Element.Add(new XElement("Desc", line));
+                    Element.Add(new XElement("Desc", content));
                 }
             }
-
             OnPropertyChanged();
-            OnPropertyChanged(nameof(DisplayName));
+            OnPropertyChanged("DisplayName");
         }
     }
 
-    // 列表显示：ID + 描述前20字
     [NoAutoInit]
-    public string DisplayName => $"{Id} - {string.Concat(Desc.Replace("\r", "").Replace("\n", " ").Take(20))}...";
+    public string DisplayName =>
+        string.Concat(Id, " - ", string.Concat(Desc.Replace("\r", "").Replace("\n", " ").Take(20)), "...");
 
     public void DeleteXml()
     {
-        if (IsVanilla) return;
-        Element.Remove();
+        if (!IsVanilla)
+        {
+            Element.Remove();
+        }
     }
 }

@@ -9,164 +9,249 @@ using Synthesis.Core.Tools;
 
 namespace Synthesis.Core.Abstraction;
 
-public abstract class BaseRepository<T> : INotifyPropertyChanged where T : XWrapper
+public abstract class BaseRepository<T> : INotifyPropertyChanged, IGameRepository, IVanillaDataLoadable
+    where T : XWrapper
 {
-    // 默认容器
-    protected readonly List<XDocument> _dataDocs = new();
-    protected readonly List<XDocument> _locDocs = new();
+    protected readonly List<XDocument> _modDataDocs = [];
 
-    public ObservableCollection<T> Items { get; } = new();
+    protected readonly List<XDocument> _modLocDocs = [];
 
-    // 状态检查
-    public virtual bool HasData => _dataDocs.Any(d => !d.IsVanilla());
-    public virtual bool HasLoc => _locDocs.Any(d => !d.IsVanilla());
+    protected readonly List<XDocument> _vanillaDataDocs = [];
 
-    // --- INotifyPropertyChanged ---
-    public event PropertyChangedEventHandler? PropertyChanged;
+    protected readonly List<XDocument> _vanillaLocDocs = [];
 
-    // --- 抽象接口：子类必须实现 ---
+    protected IEnumerable<XDocument> _dataDocs => _vanillaDataDocs.Concat(_modDataDocs);
 
-    /// <summary>
-    ///     定义如何加载资源 (扫描哪些文件夹)
-    /// </summary>
-    public abstract void LoadResources(string projectRoot, string language, string modId);
+    protected IEnumerable<XDocument> _locDocs => _vanillaLocDocs.Concat(_modLocDocs);
 
-    /// <summary>
-    ///     定义如何创建默认文件
-    /// </summary>
+    public ObservableCollection<T> Items { get; } = [];
+
+    public virtual bool HasModData => _modDataDocs.Count > 0;
+
+    public virtual bool HasModLoc => _modLocDocs.Count > 0;
+
+    public virtual void LoadResources(string projectRoot, string language, string modId)
+    {
+        LoadDataResources(projectRoot, modId);
+        LoadLocResources(projectRoot, language, modId);
+    }
+
+    public virtual void LoadLocResources(string projectRoot, string language, string modId)
+    {
+    }
+
     public abstract void EnsureDefaults(string projectRoot, string language, string modId);
 
-    /// <summary>
-    ///     解析 XML 到 Items 列表
-    /// </summary>
-    public abstract void Load();
+    public abstract void Parse(bool containOriginal);
 
-    // --- 通用方法 ---
+    public virtual void ClearLocOnly()
+    {
+        _modLocDocs.Clear();
+        _vanillaLocDocs.Clear();
+    }
 
-    public virtual void Clear()
+    public virtual void ClearModOnly()
     {
         Items.Clear();
-        _dataDocs.Clear();
-        _locDocs.Clear();
+        _modDataDocs.Clear();
+        _modLocDocs.Clear();
         NotifyStatusChanged();
     }
 
-    public virtual void AddDataDoc(XDocument doc)
+    public virtual void ClearAll()
     {
-        _dataDocs.Add(doc);
+        Items.Clear();
+        _vanillaDataDocs.Clear();
+        _vanillaLocDocs.Clear();
+        _modDataDocs.Clear();
+        _modLocDocs.Clear();
         NotifyStatusChanged();
     }
 
-    public virtual void AddLocDoc(XDocument doc)
+    public virtual void SaveFiles(string currentModId)
     {
-        _locDocs.Add(doc);
+        SaveDocs(_modDataDocs, currentModId);
+        SaveDocs(_modLocDocs, currentModId);
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public virtual void LoadDataResources(string projectRoot, string modId)
+    {
+    }
+
+    public void AddDataDoc(XDocument doc)
+    {
+        if (doc.IsVanilla())
+        {
+            _vanillaDataDocs.Add(doc);
+        }
+        else
+        {
+            _modDataDocs.Add(doc);
+        }
+        NotifyStatusChanged();
+    }
+
+    public void AddLocDoc(XDocument doc)
+    {
+        if (doc.IsVanilla())
+            _vanillaLocDocs.Add(doc);
+        else
+            _modLocDocs.Add(doc);
         NotifyStatusChanged();
     }
 
     public virtual void Delete(T item)
     {
-        // 简单移除，具体 XML 删除逻辑建议在 Wrapper 内部或子类实现
         Items.Remove(item);
     }
 
-    // 保存文件 (只保存当前 Mod 的文件)
-    public virtual void SaveFiles(string currentModId)
-    {
-        SaveDocs(_dataDocs, currentModId);
-        SaveDocs(_locDocs, currentModId);
-    }
-
-    protected void SaveDocs(List<XDocument> docs, string modId)
+    protected void SaveDocs(IEnumerable<XDocument> docs, string modId)
     {
         foreach (var doc in docs)
         {
             if (doc.GetPackageId() == modId)
             {
-                // 获取加载时记录的路径
-                var path = doc.Root?.Annotation<FilePathAnnotation>()?.Path;
-                if (!string.IsNullOrEmpty(path))
+                var text = doc.Root?.Annotation<FilePathAnnotation>()?.Path;
+                if (!string.IsNullOrEmpty(text))
                 {
-                    doc.Save(path);
+                    doc.Save(text);
                 }
             }
         }
     }
 
-    // --- 辅助工具：扫描并加载 ---
+    private bool IsDocumentRegistered(string fullPath)
+    {
+        var fullPath2 = Path.GetFullPath(fullPath);
+        return _vanillaDataDocs.Concat(_vanillaLocDocs).Concat(_modDataDocs).Concat(_modLocDocs)
+            .Select(item => item.Root?.Annotation<FilePathAnnotation>()?.Path).Any(text =>
+                !string.IsNullOrWhiteSpace(text) && string.Equals(Path.GetFullPath(text), fullPath2,
+                    StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static void AnnotateRuntimeInfo(XDocument doc, string modId, string fullPath)
+    {
+        if (doc.Root != null)
+        {
+            doc.Root.AddAnnotation("PID:" + modId);
+            doc.Root.AddAnnotation(new FilePathAnnotation(fullPath));
+        }
+    }
+
+    private static string GetFallbackTemplatePath(string fullPath)
+    {
+        var path = Path.GetDirectoryName(fullPath) ?? string.Empty;
+        var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(fullPath);
+        var extension = Path.GetExtension(fullPath);
+        return Path.Combine(path, fileNameWithoutExtension + ".synthesis" + extension);
+    }
+
     protected void ScanAndLoad(string fullPath, string expectedRootName, string modId, Action<XDocument> addAction)
     {
-        if (Directory.Exists(fullPath))
+        if (!Directory.Exists(fullPath))
         {
-            var patterns = new[] { "*.xml", "*.txt" };
-            var files = patterns.SelectMany(ext =>
-                Directory.EnumerateFiles(fullPath, ext, SearchOption.AllDirectories));
-
-            foreach (var file in files)
-            {
-                try
-                {
-                    var doc = XDocument.Load(file);
-                    // 校验根节点
-                    if (doc.Root?.Name.LocalName == expectedRootName)
-                    {
-                        // 打标签
-                        doc.Root.AddAnnotation("PID:" + modId);
-                        doc.Root.AddAnnotation(new FilePathAnnotation(file));// 记录路径
-                        addAction(doc);
-                    }
-                }
-                catch
-                {
-                    // ignored
-                }
-            }
+            return;
         }
-        else
+        foreach (var item in new string[2] { "*.xml", "*.txt" }.SelectMany(ext =>
+                     Directory.EnumerateFiles(fullPath, ext, SearchOption.AllDirectories)))
         {
-            MessageBox.Show($"not exist {fullPath} {Directory.Exists(fullPath)}");
+            try
+            {
+                var xDocument = XDocument.Load(item);
+                if (!string.Equals(xDocument.Root?.Name.LocalName, expectedRootName,
+                        StringComparison.OrdinalIgnoreCase)) continue;
+                AnnotateRuntimeInfo(xDocument, modId, item);
+                addAction(xDocument);
+            }
+            catch
+            {
+            }
         }
     }
 
-    // --- 辅助工具：创建模板 ---
     protected void CreateXmlTemplate(string fullPath, string rootNodeName, string modId,
         Action<XDocument> registerAction)
     {
-        if (File.Exists(fullPath)) return;
-        
+        fullPath = Path.GetFullPath(fullPath);
+        if (IsDocumentRegistered(fullPath))
+        {
+            return;
+        }
         try
         {
-            var dir = Path.GetDirectoryName(fullPath);
-            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
-                Directory.CreateDirectory(dir);
-
-            var doc = new XDocument(new XDeclaration("1.0", "utf-8", "yes"), new XElement(rootNodeName));
-            doc.Root?.AddAnnotation("PID:" + modId);
-            doc.Root?.AddAnnotation(new FilePathAnnotation(fullPath));
-
-            doc.Save(fullPath);
-            registerAction(doc);
+            if (File.Exists(fullPath))
+            {
+                var xDocument = XDocument.Load(fullPath);
+                if (string.Equals(xDocument.Root?.Name.LocalName, rootNodeName, StringComparison.OrdinalIgnoreCase))
+                {
+                    AnnotateRuntimeInfo(xDocument, modId, fullPath);
+                    registerAction(xDocument);
+                    return;
+                }
+                var fallbackTemplatePath = GetFallbackTemplatePath(fullPath);
+                if (IsDocumentRegistered(fallbackTemplatePath))
+                {
+                    return;
+                }
+                if (File.Exists(fallbackTemplatePath))
+                {
+                    var xDocument2 = XDocument.Load(fallbackTemplatePath);
+                    if (string.Equals(xDocument2.Root?.Name.LocalName, rootNodeName,
+                            StringComparison.OrdinalIgnoreCase))
+                    {
+                        AnnotateRuntimeInfo(xDocument2, modId, fallbackTemplatePath);
+                        registerAction(xDocument2);
+                    }
+                }
+                else
+                {
+                    var xDocument3 = new XDocument(new XDeclaration("1.0", "utf-8", "yes"), new XElement(rootNodeName));
+                    AnnotateRuntimeInfo(xDocument3, modId, fallbackTemplatePath);
+                    xDocument3.Save(fallbackTemplatePath);
+                    registerAction(xDocument3);
+                }
+            }
+            else
+            {
+                var directoryName = Path.GetDirectoryName(fullPath);
+                if (!string.IsNullOrEmpty(directoryName) && !Directory.Exists(directoryName))
+                {
+                    Directory.CreateDirectory(directoryName);
+                }
+                var xDocument4 = new XDocument(new XDeclaration("1.0", "utf-8", "yes"), new XElement(rootNodeName));
+                AnnotateRuntimeInfo(xDocument4, modId, fullPath);
+                xDocument4.Save(fullPath);
+                registerAction(xDocument4);
+            }
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"创建文件失败: {fullPath}\n{ex.Message}");
+            MessageBox.Show("创建文件失败: " + fullPath + "\n" + ex.Message);
         }
     }
 
-    // 获取目标文件 (非原版)
-    protected XDocument? GetTargetDataDoc(string rootName) =>
-        _dataDocs.FirstOrDefault(d => d.Root?.Name.LocalName == rootName && !d.IsVanilla());
+    protected XDocument? GetTargetDataDoc(string rootName)
+    {
+        return _modDataDocs.FirstOrDefault(d =>
+            string.Equals(d.Root?.Name.LocalName, rootName, StringComparison.OrdinalIgnoreCase));
+    }
 
-    protected XDocument? GetTargetLocDoc(string rootName) =>
-        _locDocs.FirstOrDefault(d => d.Root?.Name.LocalName == rootName && !d.IsVanilla());
+    protected XDocument? GetTargetLocDoc(string rootName)
+    {
+        return _modLocDocs.FirstOrDefault(d =>
+            string.Equals(d.Root?.Name.LocalName, rootName, StringComparison.OrdinalIgnoreCase));
+    }
 
     protected void NotifyStatusChanged()
     {
-        OnPropertyChanged(nameof(HasData));
-        OnPropertyChanged(nameof(HasLoc));
+        OnPropertyChanged("HasModData");
+        OnPropertyChanged("HasModLoc");
     }
 
-    protected void OnPropertyChanged([CallerMemberName] string? name = null) =>
+    protected void OnPropertyChanged([CallerMemberName] string? name = null)
+    {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+    }
 }
-
-// 路径注解类

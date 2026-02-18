@@ -1,6 +1,7 @@
 using System.IO;
 using System.Xml.Linq;
 using Synthesis.Core.Abstraction;
+using Synthesis.Core.Extensions;
 
 namespace Synthesis.Feature.Passive;
 
@@ -8,76 +9,135 @@ public class PassiveRepository : BaseRepository<UnifiedPassive>
 {
     public override void LoadResources(string root, string lang, string modId)
     {
-        ScanAndLoad(Path.Combine(root, @"StaticInfo\PassiveList"), "PassiveXmlRoot", modId, AddDataDoc);
-        ScanAndLoad(Path.Combine(root, $@"Localize\{lang}\PassiveDesc"), "PassiveDescRoot", modId, AddLocDoc);
+        ScanAndLoad(Path.Combine(root, "StaticInfo\\PassiveList"), "PassiveXmlRoot", modId, AddDataDoc);
+        ScanAndLoad(Path.Combine(root, "Localize\\" + lang + "\\PassiveDesc"), "PassiveDescRoot", modId, AddLocDoc);
+    }
+
+    public override void LoadLocResources(string projectRoot, string language, string modId)
+    {
+        ScanAndLoad(Path.Combine(projectRoot, "Localize\\" + language + "\\PassiveDesc"), "PassiveDescRoot", modId,
+            AddLocDoc);
     }
 
     public override void EnsureDefaults(string root, string lang, string modId)
     {
-        if (!HasData)
-            CreateXmlTemplate(Path.Combine(root, @"StaticInfo\PassiveList\PassiveList.xml"), "PassiveXmlRoot", modId,
+        if (!HasModData)
+        {
+            CreateXmlTemplate(Path.Combine(root, "StaticInfo\\PassiveList\\PassiveList.xml"), "PassiveXmlRoot", modId,
                 AddDataDoc);
-        if (!HasLoc)
-            CreateXmlTemplate(Path.Combine(root, $@"Localize\{lang}\PassiveDesc\PassiveDesc.xml"), "PassiveDescRoot",
-                modId, AddLocDoc);
+        }
+        if (!HasModLoc)
+        {
+            CreateXmlTemplate(Path.Combine(root, "Localize\\" + lang + "\\PassiveDesc\\PassiveDesc.xml"),
+                "PassiveDescRoot", modId, AddLocDoc);
+        }
     }
 
-    public override void Load()
+    public override void Parse(bool containOriginal)
     {
-        // 1. 构建 ID → 本地化节点 的映射（合并所有本地化文档）
-        var locMap = new Dictionary<string, XElement>();
-        foreach (var loc in _locDocs.Where(d => d.Root?.Name.LocalName == "PassiveDescRoot"))
+        Items.Clear();
+        IEnumerable<XDocument> source;
+        if (!containOriginal)
         {
-            var nodes = loc.Root?.Elements("PassiveDesc");
-            if (nodes == null) continue;
-            foreach (var descNode in nodes)// ← 改用 Elements
+            IEnumerable<XDocument> modLocDocs = _modLocDocs;
+            source = modLocDocs;
+        }
+        else
+        {
+            source = _locDocs;
+        }
+        var array = source.Where(d => d.Root?.Name.LocalName == "PassiveDescRoot").ToArray();
+        IEnumerable<XDocument> enumerable;
+        if (!containOriginal)
+        {
+            IEnumerable<XDocument> modLocDocs = _modDataDocs;
+            enumerable = modLocDocs;
+        }
+        else
+        {
+            enumerable = _dataDocs;
+        }
+        var enumerable2 = enumerable;
+        var dictionary = new Dictionary<string, XElement>();
+        var dictionary2 = new Dictionary<string, XElement>();
+        var array2 = array;
+        foreach (var obj in array2)
+        {
+            var dictionary3 = obj.IsVanilla() ? dictionary : dictionary2;
+            var enumerable3 = obj.Root?.Elements("PassiveDesc");
+            if (enumerable3 == null)
             {
-                var id = descNode.Attribute("ID")?.Value;
-                if (!string.IsNullOrEmpty(id))
-                    locMap.TryAdd(id, descNode);
+                continue;
+            }
+            foreach (var item in enumerable3)
+            {
+                var text = item.Attribute("ID")?.Value;
+                if (!string.IsNullOrEmpty(text))
+                {
+                    dictionary3.TryAdd(text, item);
+                }
             }
         }
-
-        // 2. 遍历数据文档，通过字典快速获取本地化节点
-        var modParent = GetTargetLocDoc("PassiveDescRoot")?.Root;
-        foreach (var doc in _dataDocs)
+        var textParent = GetTargetLocDoc("PassiveDescRoot")?.Root;
+        foreach (var item2 in enumerable2)
         {
-            if (doc.Root?.Name.LocalName != "PassiveXmlRoot") continue;
-            foreach (var node in doc.Root.Elements("Passive"))
+            if (item2.Root?.Name.LocalName != "PassiveXmlRoot")
             {
-                var id = node.Attribute("ID")?.Value ?? "";
-                if (string.IsNullOrEmpty(id)) continue;
-
-                locMap.TryGetValue(id, out var foundText);   // O(1) 查找
-                Items.Add(new UnifiedPassive(node, foundText, modParent));
+                continue;
+            }
+            var flag = item2.IsVanilla();
+            foreach (var item3 in item2.Root.Elements("Passive"))
+            {
+                var text2 = item3.Attribute("ID")?.Value ?? "";
+                if (string.IsNullOrEmpty(text2))
+                {
+                    continue;
+                }
+                XElement value;
+                if (!containOriginal)
+                {
+                    dictionary2.TryGetValue(text2, out value);
+                }
+                else if (flag)
+                {
+                    if (!dictionary.TryGetValue(text2, out value))
+                    {
+                        dictionary2.TryGetValue(text2, out value);
+                    }
+                }
+                else if (!dictionary2.TryGetValue(text2, out value))
+                {
+                    dictionary.TryGetValue(text2, out value);
+                }
+                Items.Add(new UnifiedPassive(item3, value, textParent));
             }
         }
     }
 
-    // ... Create / Delete 参考 CardRepo ...
-    // (Create 方法在之前的回复中已经提供过完整的，请直接使用)
     public void Create()
     {
-        var targetDoc = GetTargetDataDoc("PassiveXmlRoot");
-        if (targetDoc == null) throw new Exception("未找到可写入的 PassiveList 文件");
-
-        var newId = 100000;
-        if (Items.Any(x => !x.IsVanilla))
-            newId = Items.Where(x => !x.IsVanilla).Max(x => int.TryParse(x.Id, out var i) ? i : 0) + 1;
-
-        var node = new XElement("Passive", new XAttribute("ID", newId));
-        node.Add(new XElement("Cost", 1), new XElement("Name", "New Passive"));
-        targetDoc.Root?.Add(node);
-
-        var parent = GetTargetLocDoc("PassiveDescRoot")?.Root;
-        XElement? text = null;
-        if (parent != null)
+        var targetDataDoc = GetTargetDataDoc("PassiveXmlRoot");
+        if (targetDataDoc == null)
         {
-            text = new XElement("PassiveDesc", new XAttribute("ID", newId));
-            text.Add(new XElement("Name", "New Passive"), new XElement("Desc", "Desc..."));
-            parent.Add(text);
+            throw new Exception("未找到可写入的 PassiveList 文件");
         }
-        Items.Add(new UnifiedPassive(node, text, parent));
+        var num = 100000;
+        if (Items.Any(x => !x.IsVanilla))
+        {
+            num = Items.Where(x => !x.IsVanilla).Max(x => int.TryParse(x.Id, out var result) ? result : 0) + 1;
+        }
+        var xElement = new XElement("Passive", new XAttribute("ID", num));
+        xElement.Add(new XElement("Cost", 1), new XElement("Name", "New Passive"));
+        targetDataDoc.Root?.Add(xElement);
+        var xElement2 = GetTargetLocDoc("PassiveDescRoot")?.Root;
+        XElement xElement3 = null;
+        if (xElement2 != null)
+        {
+            xElement3 = new XElement("PassiveDesc", new XAttribute("ID", num));
+            xElement3.Add(new XElement("Name", "New Passive"), new XElement("Desc", "Desc..."));
+            xElement2.Add(xElement3);
+        }
+        Items.Add(new UnifiedPassive(xElement, xElement3, xElement2));
     }
 
     public override void Delete(UnifiedPassive item)

@@ -6,48 +6,70 @@ namespace Synthesis.Feature.DropBook;
 
 public class DropBookRepository : BaseRepository<UnifiedDropBook>
 {
-    // 依赖注入 EtcRepo 用于获取名字
     public EtcRepository? EtcRepo { get; set; }
 
     public override void LoadResources(string root, string lang, string modId)
     {
-        ScanAndLoad(Path.Combine(root, @"StaticInfo\DropBook"), "BookUseXmlRoot", modId, AddDataDoc);
+        LoadDataResources(root, modId);
+    }
+
+    public override void LoadDataResources(string projectRoot, string modId)
+    {
+        ScanAndLoad(Path.Combine(projectRoot, "StaticInfo\\DropBook"), "BookUseXmlRoot", modId, AddDataDoc);
     }
 
     public override void EnsureDefaults(string root, string lang, string modId)
     {
-        if (!HasData)
-            CreateXmlTemplate(Path.Combine(root, @"StaticInfo\DropBook\DropBook.xml"), "BookUseXmlRoot", modId,
+        if (!HasModData)
+        {
+            CreateXmlTemplate(Path.Combine(root, "StaticInfo\\DropBook\\DropBook.xml"), "BookUseXmlRoot", modId,
                 AddDataDoc);
+        }
     }
 
-    public override void Load()
+    public override void Parse(bool containOriginal)
     {
-        foreach (var doc in _dataDocs)
+        Items.Clear();
+        IEnumerable<XDocument> enumerable;
+        if (!containOriginal)
         {
-            if (doc.Root?.Name.LocalName != "BookUseXmlRoot") continue;
-            foreach (var node in doc.Root.Elements("BookUse"))
+            IEnumerable<XDocument> modDataDocs = _modDataDocs;
+            enumerable = modDataDocs;
+        }
+        else
+        {
+            enumerable = _dataDocs;
+        }
+        foreach (var item in enumerable)
+        {
+            if (item.Root?.Name.LocalName != "BookUseXmlRoot")
             {
-                Items.Add(new UnifiedDropBook(node, EtcRepo!));
+                continue;
+            }
+            foreach (var item2 in item.Root.Elements("BookUse"))
+            {
+                Items.Add(new UnifiedDropBook(item2, EtcRepo));
             }
         }
     }
 
     public void Create()
     {
-        var targetDoc = GetTargetDataDoc("BookUseXmlRoot");
-        if (targetDoc == null) throw new Exception("未找到可写入的 DropBook 文件(非原版)");
-
-        var newId = 9000000;
+        var targetDataDoc = GetTargetDataDoc("BookUseXmlRoot");
+        if (targetDataDoc == null)
+        {
+            return;
+        }
+        var num = 9000000;
         if (Items.Any(x => !x.IsVanilla))
-            newId = Items.Where(x => !x.IsVanilla).Max(x => int.TryParse(x.Id, out var i) ? i : 0) + 1;
-
-        var node = new XElement("BookUse", new XAttribute("ID", newId));
-        node.Add(new XElement("TextId", newId), new XElement("BookIcon", "FullStopOffice"),
+        {
+            num = Items.Where(x => !x.IsVanilla).Max(x => int.TryParse(x.Id, out var result) ? result : 0) + 1;
+        }
+        var xElement = new XElement("BookUse", new XAttribute("ID", num));
+        xElement.Add(new XElement("TextId", num), new XElement("BookIcon", "FullStopOffice"),
             new XElement("Chapter", "1"));
-        targetDoc.Root?.Add(node);
-
-        Items.Add(new UnifiedDropBook(node, EtcRepo!));
+        targetDataDoc.Root?.Add(xElement);
+        Items.Add(new UnifiedDropBook(xElement, EtcRepo));
     }
 
     public override void Delete(UnifiedDropBook item)

@@ -9,9 +9,9 @@
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=viewModels:BackupButtonViewModel, IsDesignTimeCreatable=False}">
 
-    <Button Command="{Binding BackupCommand}"
-            Content="📦 备份"
-            Padding="10,5" Margin="5,0,0,0"
-            Background="#FFF0F5" BorderBrush="#FF69B4" FontWeight="Bold"
-            ToolTip="一键备份当前 Mod 到 Backups 文件夹" />
+  <Button Command="{Binding BackupCommand}"
+          Content="📦 备份"
+          Padding="10,5" Margin="5,0,0,0"
+          Background="#FFF0F5" BorderBrush="#FF69B4" FontWeight="Bold"
+          ToolTip="一键备份当前 Mod 到 Backups 文件夹" />
 </UserControl>

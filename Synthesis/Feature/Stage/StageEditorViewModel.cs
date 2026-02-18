@@ -6,18 +6,13 @@ namespace Synthesis.Feature.Stage;
 
 public class StageEditorViewModel : BindableBase
 {
-    // --- 邀请函选择 ---
-
     public StageEditorViewModel(ProjectManager manager)
     {
         Manager = manager;
-
-        CreateCommand = new DelegateCommand(() => Manager.StageRepo.Create());
+        CreateCommand = new DelegateCommand(delegate { Manager.StageRepo.Create(); });
         DeleteCommand = new DelegateCommand(Delete, () => SelectedItem != null).ObservesProperty(() => SelectedItem);
-
         AddWaveCommand = new DelegateCommand(AddWave, () => SelectedItem != null).ObservesProperty(() => SelectedItem);
         RemoveWaveCommand = new DelegateCommand<UnifiedWave>(RemoveWave);
-
         AddInvBookCommand =
             new DelegateCommand(AddInvBook, () => SelectedItem != null).ObservesProperty(() => SelectedItem);
         RemoveInvBookCommand = new DelegateCommand<LorId?>(RemoveInvBook);
@@ -43,12 +38,16 @@ public class StageEditorViewModel : BindableBase
         set => SetProperty(ref field, value);
     } = "900001";
 
-    // --- 命令 ---
     public DelegateCommand CreateCommand { get; }
+
     public DelegateCommand DeleteCommand { get; }
+
     public DelegateCommand AddWaveCommand { get; }
+
     public DelegateCommand<UnifiedWave> RemoveWaveCommand { get; }
+
     public DelegateCommand AddInvBookCommand { get; }
+
     public DelegateCommand<LorId?> RemoveInvBookCommand { get; }
 
     private void Delete()
@@ -60,42 +59,48 @@ public class StageEditorViewModel : BindableBase
         }
     }
 
-    private void AddWave() => SelectedItem?.AddWave();
-    private void RemoveWave(UnifiedWave w) => SelectedItem?.RemoveWave(w);
+    private void AddWave()
+    {
+        SelectedItem?.AddWave();
+    }
+
+    private void RemoveWave(UnifiedWave w)
+    {
+        SelectedItem?.RemoveWave(w);
+    }
 
     private void AddInvBook()
     {
-        if (SelectedItem == null) return;
-
-        // 限制最多 3 本 (虽然XML允许更多，但游戏UI通常只显示3本)
+        if (SelectedItem == null)
+        {
+            return;
+        }
         if (SelectedItem.InvitationBooks.Count >= 3)
         {
             MessageBox.Show("邀请函书籍不能超过 3 本。");
             return;
         }
-
-        LorId targetId = default;
-
-        // 优先用下拉框选中的
+        var lorId = default(LorId);
         if (SelectedDropBook != null)
         {
-            targetId = SelectedDropBook.GlobalId;
+            lorId = SelectedDropBook.GlobalId;
         }
-        // 其次用手输的
         else if (!string.IsNullOrEmpty(NewBookIdToAdd))
         {
-            targetId = new LorId(Manager.CurrentModId, NewBookIdToAdd.Trim());
+            lorId = new LorId(Manager.CurrentModId, NewBookIdToAdd.Trim());
         }
-
-        if (!string.IsNullOrEmpty(targetId.ItemId) && !SelectedItem.InvitationBooks.Contains(targetId))
+        if (!string.IsNullOrEmpty(lorId.ItemId) && !SelectedItem.InvitationBooks.Contains(lorId))
         {
-            SelectedItem.AddInvitationBook(targetId);
-            SelectedDropBook = null;// 清空选中
+            SelectedItem.AddInvitationBook(lorId);
+            SelectedDropBook = null;
         }
     }
 
     private void RemoveInvBook(LorId? id)
     {
-        if (id.HasValue) SelectedItem?.RemoveInvitationBook(id.Value);
+        if (id.HasValue)
+        {
+            SelectedItem?.RemoveInvitationBook(id.Value);
+        }
     }
 }
